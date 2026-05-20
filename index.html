@@ -355,6 +355,39 @@
   }
   .sku-buy:active { transform: scale(0.96); }
   .sku-buy.owned { background: var(--bg-elev); color: var(--text-dim); cursor: default; }
+  .sku-buy.outline { background: transparent; border: 2px solid var(--green); color: var(--green); padding: 8px 12px; }
+  .sku-buy.check { background: var(--yellow); color: #1a1d24; }
+
+  /* Earn tab styling — lives inside the Shop modal as a top section */
+  .earn-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg-elev-2); border-radius: 10px;
+    padding: 10px; margin-bottom: 8px;
+  }
+  .earn-logo {
+    width: 38px; height: 38px; border-radius: 8px;
+    background: var(--bg-elev); overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex: 0 0 38px;
+  }
+  .earn-logo img { width: 100%; height: 100%; object-fit: cover; }
+  .earn-info { flex: 1; min-width: 0; }
+  .earn-title { font-weight: 700; font-size: 13px; line-height: 1.15; }
+  .earn-desc  { font-size: 11px; color: var(--text-dim); margin-top: 2px; line-height: 1.2; }
+  .earn-reward {
+    font-size: 11px; color: var(--green); font-weight: 700; margin-top: 2px;
+  }
+  .shop-section-title {
+    text-transform: uppercase; letter-spacing: 0.5px;
+    font-size: 11px; color: var(--text-dim); font-weight: 700;
+    margin: 18px 0 8px;
+  }
+  .shop-section-title:first-child { margin-top: 0; }
+  .hints-balance {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--bg-elev-2); padding: 4px 10px; border-radius: 12px;
+    font-size: 13px; font-weight: 700; color: var(--text);
+  }
 
   /* Settings */
   .setting-row {
@@ -541,11 +574,17 @@
   </div>
 </div>
 
-<!-- Shop modal -->
+<!-- Shop modal — combines Earn (free hints from missions) + paid Stars SKUs -->
 <div class="modal-bg" id="shopModal">
   <div class="modal">
     <button class="close" data-close="shopModal">×</button>
-    <h2 data-i18n="shop.title">⭐ Shop</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:0 0 12px;">
+      <h2 style="margin:0;" data-i18n="shop.title">⭐ Shop</h2>
+      <span class="hints-balance" id="hintsBalance" style="display:none;">💡 <span id="hintsBalanceNum">0</span></span>
+    </div>
+    <div class="shop-section-title" data-i18n="earn.title">💰 Earn free hints</div>
+    <div id="earnList"></div>
+    <div class="shop-section-title" data-i18n="shop.buy_section">⭐ Buy with Telegram Stars</div>
     <div id="shopList"></div>
     <div style="text-align:center;font-size:11px;color:var(--text-mute);margin-top:12px;">
       Paid with Telegram Stars · No ads, ever
@@ -689,6 +728,8 @@ const I18N = {
     'app.title':'Slovo',
     'common.close':'Close','common.cancel':'Cancel','common.continue':'Continue','common.share':'Share','common.copied':'Copied!','common.copy':'Copy',
     'common.loading':'Loading…','common.ok':'OK','common.enter':'Enter',
+    'earn.title':'💰 Earn free hints','earn.open':'Open','earn.play':'Play','earn.check':'Check','earn.done':'Done','earn.claimed':'+{n} hints','earn.not_yet':'Not yet — keep playing!','earn.no_key':'Verification offline. Try later.',
+    'shop.buy_section':'⭐ Buy with Telegram Stars',
     'game.guess_n_of_6':'Guess {n} of 6','game.not_in_list':'Not in word list','game.not_enough':'Not enough letters',
     'game.you_won':'Brilliant!','game.you_lost':'Better luck tomorrow','game.answer_was':'The word was','game.share_result':'Share Result',
     'game.next_in':'Next puzzle in','game.hint_used':'Letter revealed','game.no_hints':'No hints left',
@@ -710,6 +751,8 @@ const I18N = {
   },
   ru: {
     'common.close':'Закрыть','common.cancel':'Отмена','common.continue':'Продолжить','common.share':'Поделиться','common.copied':'Скопировано!','common.copy':'Копировать','common.loading':'Загрузка…','common.ok':'OK','common.enter':'Ввести',
+    'earn.title':'💰 Бесплатные подсказки','earn.open':'Открыть','earn.play':'Играть','earn.check':'Проверить','earn.done':'Готово','earn.claimed':'+{n} подсказок','earn.not_yet':'Пока нет — попробуйте позже','earn.no_key':'Проверка недоступна.',
+    'shop.buy_section':'⭐ Купить за Звёзды',
     'game.guess_n_of_6':'Попытка {n} из 6','game.not_in_list':'Нет в словаре','game.not_enough':'Недостаточно букв',
     'game.you_won':'Великолепно!','game.you_lost':'Завтра повезёт','game.answer_was':'Слово было','game.share_result':'Поделиться',
     'game.next_in':'Следующее через','game.hint_used':'Буква открыта','game.no_hints':'Подсказок нет',
@@ -1010,9 +1053,99 @@ const state = {
   busy: false,
   me: null,
   skus: [],
+  missions: [],
+  boinkersStarted: (() => { try { return JSON.parse(localStorage.getItem('slovo.boinkersStarted') || '{}'); } catch (_) { return {}; } })(),
+  _firstGuessTracked: false,
 };
 
 // ============ API ============
+// ============ Analytics (direct HTTP to Mixpanel — no CDN dep) ============
+// Mirrors Match Icon's implementation. Initialized in boot() once the
+// token is fetched from /api/flags. Project tokens are public by design.
+let __mxToken = '';
+let __mxDistinctId = '';
+function initMixpanel(token) {
+  if (!token) return;
+  __mxToken = token;
+  const u = TG && TG.initDataUnsafe && TG.initDataUnsafe.user;
+  if (u && u.id) {
+    __mxDistinctId = String(u.id);
+    mxEngage({
+      $name:       u.first_name || u.username || ('TG ' + u.id),
+      $first_name: u.first_name || null,
+      $username:   u.username || null,
+      tg_lang:     u.language_code || null,
+      platform:    (TG && TG.platform) || 'unknown',
+    });
+  } else {
+    let did = '';
+    try { did = localStorage.getItem('__mx_did') || ''; } catch (_) {}
+    if (!did) { did = 'anon-' + Math.random().toString(36).slice(2, 12); try { localStorage.setItem('__mx_did', did); } catch (_) {} }
+    __mxDistinctId = did;
+  }
+}
+function _mxPost(url, body) {
+  try {
+    if (navigator.sendBeacon) {
+      const blob = new Blob([body], { type: 'application/x-www-form-urlencoded' });
+      if (navigator.sendBeacon(url, blob)) return;
+    }
+  } catch (_) {}
+  try {
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body, mode: 'no-cors', keepalive: true }).catch(() => {});
+  } catch (_) {}
+}
+function mxEngage(setProps) {
+  if (!__mxToken || !__mxDistinctId || !setProps) return;
+  const payload = [{ $token: __mxToken, $distinct_id: __mxDistinctId, $time: Date.now(), $set: setProps, $ip: '0' }];
+  _mxPost('https://api.mixpanel.com/engage?ip=1', 'data=' + encodeURIComponent(btoa(JSON.stringify(payload))));
+}
+function track(event, props) {
+  if (!__mxToken) return;
+  try {
+    const me = state.me || {};
+    const baseProps = {
+      token: __mxToken,
+      distinct_id: __mxDistinctId,
+      time: Math.floor(Date.now() / 1000),
+      $insert_id: Math.random().toString(36).slice(2, 18),
+      // Slovo dimensions on every event for easy slicing in Mixpanel
+      lang: state.lang || currentLang,
+      streak: me.streak | 0,
+      max_streak: me.max_streak | 0,
+      games_played: me.games_played | 0,
+      hints_balance: me.hints_balance | 0,
+      pro_active: (me.pro_until || 0) > Date.now(),
+      active_theme: me.active_theme || 'default',
+      version: 'v0.1',
+    };
+    const payload = [{ event, properties: Object.assign(baseProps, props || {}) }];
+    _mxPost('https://api.mixpanel.com/track?ip=1', 'data=' + encodeURIComponent(btoa(JSON.stringify(payload))));
+  } catch (_) {}
+}
+// session_start on cold boot + on resume after >30s hidden. session_end on pagehide.
+function startSessionTracking() {
+  const baseProps = () => ({
+    platform: (TG && TG.platform) || 'unknown',
+    start_param: (TG && TG.initDataUnsafe && TG.initDataUnsafe.start_param) || null,
+    ui_lang: currentLang,
+  });
+  track('session_start', Object.assign(baseProps(), { kind: 'start' }));
+  let sessionStartMs = Date.now(); let hiddenAtMs = null;
+  const RESUME_MS = 30 * 1000;
+  function endSession() { if (sessionStartMs == null) return; const dur = Math.round((Date.now() - sessionStartMs) / 1000); track('session_end', { duration_sec: dur }); sessionStartMs = null; }
+  function startSession(kind) { sessionStartMs = Date.now(); track('session_start', Object.assign(baseProps(), { kind })); }
+  window.addEventListener('pagehide', endSession);
+  window.addEventListener('beforeunload', endSession);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { hiddenAtMs = Date.now(); }
+    else if (hiddenAtMs != null) {
+      const gap = Date.now() - hiddenAtMs; hiddenAtMs = null;
+      if (gap >= RESUME_MS) { endSession(); startSession('resume'); }
+    }
+  });
+}
+
 const API_BASE = '';
 async function api(path, body) {
   const init = { initData: (TG && TG.initData) || '', dev_uid: localStorage.getItem('slovo.devUid') || undefined };
@@ -1163,6 +1296,11 @@ async function submitGuess() {
   if (state.current.length < WORD_LEN) {
     shakeCurrentRow(); toast(t('game.not_enough'), 'error'); haptic('warn'); return;
   }
+  // First guess of this session = game_start (only fire once per session+day).
+  if (state.guesses.length === 0 && !state._firstGuessTracked) {
+    state._firstGuessTracked = true;
+    track('game_start', { day_idx: state.dayIdx });
+  }
   state.busy = true; renderPrimaryBtn();
   const guess = state.current.toLowerCase();
   const r = await api('/api/guess', { lang: state.lang, dayIdx: state.dayIdx, guess });
@@ -1184,12 +1322,21 @@ async function submitGuess() {
     haptic('win');
     bounceRow(state.guesses.length - 1);
     confettiBurst();
+    const guessesUsed = state.guesses.length;
+    track('game_win', { day_idx: state.dayIdx, guesses_used: guessesUsed, answer: state.answer });
+    const prevStreak = (state.me && state.me.streak) || 0;
     await refreshMe();
+    const newStreak = (state.me && state.me.streak) || 0;
+    // Streak milestones fire ONCE when crossing the threshold.
+    for (const ms of [3, 7, 14, 30, 100, 365]) {
+      if (newStreak >= ms && prevStreak < ms) track('streak_milestone', { streak: newStreak, milestone: ms });
+    }
     setTimeout(openStats, 1200);
   } else if (r.body.state === 'lost') {
     state.finished = true; state.result = 'lost'; state.answer = r.body.answer;
     haptic('lose');
     msg(t('game.answer_was') + ': ' + (state.answer || '').toUpperCase());
+    track('game_lose', { day_idx: state.dayIdx, answer: state.answer });
     await refreshMe();
     setTimeout(openStats, 1200);
   } else {
@@ -1329,6 +1476,7 @@ function updateCountdown() {
 
 // ============ Share ============
 async function shareResult() {
+  track('share_result', { day_idx: state.dayIdx, result: state.result, guesses_used: state.guesses.length });
   const text = buildShareGrid(true);
   // Prefer Telegram in-chat share for Mini App
   if (TG && TG.openTelegramLink) {
@@ -1459,11 +1607,131 @@ function shareApp() {
   window.open(url, '_blank');
 }
 
-// ============ Shop ============
+// ============ Shop + Earn ============
 async function openShop() {
   closeModal('settingsModal');
-  await loadSkus();
+  await Promise.all([loadSkus(), loadMissions(), refreshMe()]);
+  renderHintsBalance();
+  renderEarn();
+  renderShop();
   openModal('shopModal');
+  track('shop_open');
+}
+
+function renderHintsBalance() {
+  const me = state.me || {};
+  const el = document.getElementById('hintsBalance');
+  const n = document.getElementById('hintsBalanceNum');
+  if (!el || !n) return;
+  n.textContent = me.hints_balance | 0;
+  el.style.display = '';
+}
+
+async function loadMissions() {
+  try {
+    const r = await fetch('/api/earn/missions');
+    state.missions = await r.json();
+  } catch (e) { state.missions = []; }
+}
+
+function renderEarn() {
+  const list = document.getElementById('earnList');
+  if (!list) return;
+  list.innerHTML = '';
+  const me = state.me || {};
+  const done = me.missions_done || [];
+  for (const m of (state.missions || [])) {
+    const claimed = done.includes(m.id);
+    const checkPending = !!(state.boinkersStarted && state.boinkersStarted[m.id]);
+    let btnLabel, btnClass;
+    if (claimed) { btnLabel = t('earn.done'); btnClass = 'owned'; }
+    else if (m.kind === 'boinkers') {
+      btnLabel = checkPending ? t('earn.check') : t('earn.play');
+      btnClass = checkPending ? 'check' : 'outline';
+    } else {
+      btnLabel = t('earn.open');
+      btnClass = 'outline';
+    }
+    const row = document.createElement('div'); row.className = 'earn-row';
+    const logoHtml = m.logo && (m.logo.startsWith('/') || m.logo.startsWith('http'))
+      ? `<img src="${m.logo}" alt="">`
+      : `<span>${m.logo || '🎯'}</span>`;
+    row.innerHTML = `
+      <div class="earn-logo">${logoHtml}</div>
+      <div class="earn-info">
+        <div class="earn-title">${m.title}</div>
+        <div class="earn-desc">${m.description}</div>
+        <div class="earn-reward">+${m.reward} 💡</div>
+      </div>
+      <button class="sku-buy ${btnClass}" ${claimed ? 'disabled' : ''}>${btnLabel}</button>
+    `;
+    if (!claimed) {
+      row.querySelector('button').addEventListener('click', () => onMissionClick(m, checkPending));
+    }
+    list.appendChild(row);
+  }
+}
+
+async function onMissionClick(m, checkPending) {
+  if (m.kind === 'simple') {
+    openMissionLink(m.url);
+    // Optimistic claim — server enforces idempotency.
+    const r = await api('/api/earn/claim-simple', { missionId: m.id });
+    if (r.ok && r.body && r.body.ok) {
+      if (!r.body.alreadyClaimed) {
+        toast(t('earn.claimed', { n: m.reward }));
+        track('mission_claim', { mission_id: m.id, kind: 'simple', reward: m.reward });
+      }
+      await refreshMe();
+      renderHintsBalance();
+      renderEarn();
+    }
+    return;
+  }
+  if (m.kind === 'boinkers') {
+    if (!checkPending) {
+      // First tap: open the partner mini-app and remember we did
+      openMissionLink(m.url);
+      state.boinkersStarted = state.boinkersStarted || {};
+      state.boinkersStarted[m.id] = Date.now();
+      try { localStorage.setItem('slovo.boinkersStarted', JSON.stringify(state.boinkersStarted)); } catch (_) {}
+      track('mission_open', { mission_id: m.id, kind: 'boinkers' });
+      renderEarn();
+      return;
+    }
+    // CHECK: verify with the partner API
+    const r = await api('/api/earn/verify-boinkers', { missionId: m.id });
+    if (r.ok && r.body && r.body.ok && r.body.verified) {
+      if (!r.body.alreadyClaimed) {
+        toast(t('earn.claimed', { n: m.reward }));
+        track('mission_claim', { mission_id: m.id, kind: 'boinkers', reward: m.reward });
+      }
+      // Clear the pending state on success
+      if (state.boinkersStarted) { delete state.boinkersStarted[m.id]; try { localStorage.setItem('slovo.boinkersStarted', JSON.stringify(state.boinkersStarted)); } catch (_) {} }
+      await refreshMe();
+      renderHintsBalance();
+      renderEarn();
+    } else {
+      const reason = r.body && r.body.reason;
+      if (reason === 'no_api_key') toast(t('earn.no_key'), 'error');
+      else toast(t('earn.not_yet'), 'error');
+      track('mission_verify_failed', { mission_id: m.id, reason: reason || 'unknown' });
+    }
+  }
+}
+
+function openMissionLink(url) {
+  if (!url) return;
+  if (url === 'tg://emoji-status') {
+    // Sentinel — set Telegram emoji status. Falls back to a no-op outside TG.
+    if (TG && TG.setEmojiStatus) { try { TG.setEmojiStatus('🧠'); return; } catch (_) {} }
+    return;
+  }
+  if (TG && TG.openTelegramLink && /^https?:\/\/t\.me\//.test(url)) {
+    try { TG.openTelegramLink(url); return; } catch (_) {}
+  }
+  if (TG && TG.openLink) { try { TG.openLink(url); return; } catch (_) {} }
+  window.open(url, '_blank');
 }
 
 async function loadSkus() {
@@ -1472,7 +1740,6 @@ async function loadSkus() {
     const j = await r.json();
     state.skus = j.skus || [];
   } catch (e) { state.skus = []; }
-  renderShop();
 }
 
 function renderShop() {
@@ -1511,11 +1778,15 @@ async function buy(skuId) {
     toast('Telegram required for purchases', 'error');
     return;
   }
+  track('iap_open_invoice', { sku: skuId });
   const r = await api('/api/create-invoice', { sku: skuId });
   if (!r.ok) { toast(r.body && r.body.error || t('err.network'), 'error'); return; }
   const link = r.body.link;
   TG.openInvoice(link, async (status) => {
+    track('iap_invoice_result', { sku: skuId, status });
     if (status === 'paid') {
+      const sku = (state.skus || []).find(s => s.id === skuId);
+      track('iap_purchase', { sku: skuId, stars: sku && sku.price, title: sku && sku.title });
       toast('⭐ Thanks!');
       setTimeout(() => pollPurchases(), 500);
       setTimeout(() => pollPurchases(), 3000);
@@ -1617,6 +1888,13 @@ document.addEventListener('keydown', (e) => {
   populateNotifSelect();
   renderGrid();
   renderKeyboard();
+  // Fetch flags first so we know the Mixpanel token before tracking anything
+  let flags = {};
+  try { flags = await (await fetch('/api/flags')).json(); } catch (_) {}
+  if (flags && flags.mixpanel_token) {
+    initMixpanel(flags.mixpanel_token);
+    startSessionTracking();
+  }
   await refreshMe();
   await loadToday();
   maybeShowOnboarding();

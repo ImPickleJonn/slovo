@@ -34,6 +34,21 @@ const ADMIN_TG_IDS = new Set(
 );
 function isAdmin(uid) { return ADMIN_TG_IDS.has(String(uid)); }
 
+// Mixpanel: token is exposed to the client via /api/flags so the browser
+// can fire events directly to api.mixpanel.com (Mixpanel resolves geo from
+// the request IP — that's the USER's IP this way). Project tokens are
+// public by Mixpanel design (write-only, no read access).
+const MIXPANEL_TOKEN = process.env.MIXPANEL_TOKEN || '';
+
+// Boinkers partner integration. Used to verify mission completions
+// server-side. The API key MUST stay server-side — never expose in any
+// /api/flags response. Pickle's partner config (key + name + campaign)
+// comes from the Boinkers business contact.
+const BOINKERS_API_KEY      = process.env.BOINKERS_API_KEY      || '';
+const BOINKERS_PARTNER_NAME = process.env.BOINKERS_PARTNER_NAME || 'SlovoPartner';
+const BOINKERS_CAMPAIGN     = process.env.BOINKERS_CAMPAIGN     || 'campSlovoWord';
+const BOINKERS_DEEP_LINK    = `https://t.me/boinker_bot/boinkapp?startapp=${BOINKERS_CAMPAIGN}`;
+
 // ============ Postgres (player state + daily progress + IAP ledger) ============
 // DATABASE_URL is auto-injected by Railway/Render when a Postgres add-on is
 // linked. Without it the DB layer no-ops so local dev still boots — the client
@@ -130,6 +145,10 @@ async function initSchema() {
       created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
       PRIMARY KEY (referrer_id, invitee_id)
     );
+
+    -- Earn-tab missions completed per user. We track per (tg_id, mission_id)
+    -- so a user can never double-claim the same mission.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS missions_done JSONB NOT NULL DEFAULT '[]'::jsonb;
   `;
   try {
     await dbPool.query(sql);
@@ -462,6 +481,11 @@ app.get('/api/flags', (req, res) => {
     wordLen: WORD_LEN,
     maxGuesses: MAX_GUESSES,
     publicUrl: getPublicUrl(),
+    // Surfaced so the client fires Mixpanel events DIRECTLY (gives Mixpanel
+    // the user's real IP for geo resolution). Project tokens are public.
+    mixpanel_token: MIXPANEL_TOKEN,
+    // Used by the Earn tab share button to know what link to share.
+    bot_username: process.env.BOT_USERNAME || '',
   });
 });
 
@@ -639,7 +663,7 @@ app.post('/api/me', async (req, res) => {
     streak: 0, max_streak: 0, games_played: 0, games_won: 0,
     guess_dist: [0,0,0,0,0,0], hints_balance: 0, shield_until: 0,
     archive_unlocked: false, themes_owned: [], active_theme: 'default',
-    pro_until: 0, ref_count: 0,
+    pro_until: 0, ref_count: 0, missions_done: [],
   };
   if (dbReady) {
     let row = (await dbPool.query('SELECT * FROM users WHERE tg_id = $1', [user.id])).rows[0];
@@ -661,6 +685,7 @@ app.post('/api/me', async (req, res) => {
         notif_hour: row.notif_hour,
         notif_opted_in: row.notif_opted_in,
         lang: row.lang,
+        missions_done: Array.isArray(row.missions_done) ? row.missions_done : [],
       };
     }
   }
@@ -1138,6 +1163,168 @@ async function notifTick() {
   } catch (e) { console.error('[notif] tick err:', e.message); }
 }
 setInterval(notifTick, 5 * 60 * 1000);
+
+// ============ Bot-avatar proxy ============
+// GET /api/bot-avatar/:username — resolves a Telegram bot's profile photo
+// via the Bot API and proxies the bytes. Lets us use bot avatars as mission
+// logos without committing binary files or exposing BOT_TOKEN. 24h memory cache.
+const __botAvatarCache = new Map();
+const BOT_AVATAR_TTL_MS = 24 * 60 * 60 * 1000;
+app.get('/api/bot-avatar/:username', async (req, res) => {
+  if (!BOT_TOKEN) return res.status(503).send('bot token not configured');
+  const raw = String(req.params.username || '').replace(/^@/, '');
+  if (!/^[a-zA-Z0-9_]{3,64}$/.test(raw)) return res.status(400).send('bad username');
+  const cached = __botAvatarCache.get(raw);
+  const now = Date.now();
+  if (cached && now - cached.fetchedAt < BOT_AVATAR_TTL_MS) {
+    res.setHeader('Content-Type', cached.contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.end(cached.buf);
+  }
+  try {
+    const chatR = await fetch(`${TELEGRAM_API}/getChat?chat_id=@${raw}`);
+    const chat = await chatR.json();
+    if (!chat.ok || !chat.result || !chat.result.photo) return res.status(404).send('no avatar');
+    const fileId = chat.result.photo.big_file_id || chat.result.photo.small_file_id;
+    const fR = await fetch(`${TELEGRAM_API}/getFile?file_id=${encodeURIComponent(fileId)}`);
+    const f = await fR.json();
+    if (!f.ok || !f.result || !f.result.file_path) return res.status(404).send('no file_path');
+    const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${f.result.file_path}`;
+    const imgR = await fetch(fileUrl);
+    if (!imgR.ok) return res.status(502).send('upstream fetch failed');
+    const buf = Buffer.from(await imgR.arrayBuffer());
+    const contentType = imgR.headers.get('content-type') || 'image/jpeg';
+    __botAvatarCache.set(raw, { buf, contentType, fetchedAt: now });
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.end(buf);
+  } catch (e) {
+    console.error('[bot-avatar] error:', e.message);
+    res.status(500).send('avatar fetch failed');
+  }
+});
+
+// ============ Earn missions ============
+// Rewards in HINTS (Slovo's universal currency). Missions are server-side
+// source of truth — the client only displays + initiates verify/complete.
+// Two kinds:
+//   - SIMPLE: open a link, claim once (e.g. follow channel, share). Trust-
+//     on-tap. Cheap rewards (1-3 hints).
+//   - VERIFIED: Boinkers partner API confirms the threshold was met. Higher
+//     rewards (5-10 hints).
+const BOINKERS_VERIFY = {
+  'boinkers-level-3':     { params: { BoinkerLevel: 3,      FromPartner: 0 }, key: 'BoinkerLevel',     min: 3 },
+  'boinkers-spin-30':     { params: { Spins: 30,             FromPartner: 0 }, key: 'Spins',            min: 30 },
+  'boinkers-red-lootbox': { params: { StandardLootBoxes: 1,  FromPartner: 0 }, key: 'StandardLootBoxes', min: 1 },
+};
+const DEFAULT_MISSIONS = [
+  // ---- SIMPLE (trust-on-tap) ----
+  { id: 'follow-channel', kind: 'simple', title: 'Follow on Telegram', description: 'Join the Slovo channel for daily word reveals.', logo: '📢', url: 'https://t.me/SlovoOfficial', reward: 2 },
+  { id: 'share-app',      kind: 'simple', title: 'Share with a friend', description: 'Tap to share Slovo. Both of you start the streak together.', logo: '🤝', url: 'https://t.me/share/url?url=https%3A%2F%2Ft.me%2FSlovoGameBot&text=%F0%9F%A7%A0%20Daily%20word%20puzzle%20%E2%80%94%20can%20you%20beat%20me%3F', reward: 2 },
+  { id: 'set-emoji-status', kind: 'simple', title: 'Set Slovo emoji status', description: 'Add 🧠 as your Telegram emoji status.', logo: '🧠', url: 'tg://emoji-status', reward: 3 },
+  // ---- VERIFIED via Boinkers partner API ----
+  { id: 'play-boinkers',       kind: 'simple', title: 'Try Boinkers',                description: 'Open Boinkers and play a round.',                                    logo: '/api/bot-avatar/boinker_bot', url: BOINKERS_DEEP_LINK, reward: 3 },
+  { id: 'boinkers-level-3',    kind: 'boinkers', title: 'Reach Boinkers level 3',     description: 'Play Boinkers and level up to 3. Tap CHECK after.',                  logo: '/api/bot-avatar/boinker_bot', url: BOINKERS_DEEP_LINK, reward: 8 },
+  { id: 'boinkers-spin-30',    kind: 'boinkers', title: 'Spin 30 times on Boinkers',  description: 'Spin the wheel 30 times in Boinkers, then tap CHECK.',               logo: '/api/bot-avatar/boinker_bot', url: BOINKERS_DEEP_LINK, reward: 6 },
+  { id: 'boinkers-red-lootbox',kind: 'boinkers', title: 'Open a red lootbox',         description: 'Open one Standard (red) lootbox in Boinkers, then tap CHECK.',       logo: '/api/bot-avatar/boinker_bot', url: BOINKERS_DEEP_LINK, reward: 7 },
+];
+
+async function verifyBoinkers(telegramId, missionId) {
+  const cfg = BOINKERS_VERIFY[missionId];
+  if (!cfg) return { ok: false, reason: 'unknown mission' };
+  if (!BOINKERS_API_KEY) return { ok: false, reason: 'no_api_key' };
+  const qs = new URLSearchParams({
+    partnerName: BOINKERS_PARTNER_NAME,
+    apiKey: BOINKERS_API_KEY,
+    userTelegramId: String(telegramId),
+    ...Object.fromEntries(Object.entries(cfg.params).map(([k, v]) => [k, String(v)])),
+  });
+  const url = 'https://partner-reports.boinkers.io/api/partner/user?' + qs.toString();
+  try {
+    const resp = await fetch(url, { method: 'GET' });
+    if (!resp.ok) {
+      console.warn(`[boinkers] ${missionId} for ${telegramId} → HTTP ${resp.status}`);
+      return { ok: false, reason: 'http_' + resp.status };
+    }
+    const text = await resp.text();
+    let body = null;
+    try { body = JSON.parse(text); } catch (_) {}
+    let verified = false;
+    if (body && typeof body === 'object') {
+      if (body.success === true || body.verified === true || body.met === true || body.eligible === true) verified = true;
+      else if (cfg.key in body && Number(body[cfg.key]) >= cfg.min) verified = true;
+    } else if (text) {
+      const lower = text.toLowerCase().trim();
+      if (lower === 'true' || lower === 'ok' || lower === 'success' || lower === '1') verified = true;
+    }
+    return { ok: verified, raw: body || text };
+  } catch (e) {
+    console.error('[boinkers] verify error:', e.message);
+    return { ok: false, reason: 'network' };
+  }
+}
+
+// GET /api/earn/missions — public list (no auth needed; data isn't sensitive).
+// Annotates Boinkers missions so the client uses the CHECK-button verify flow.
+app.get('/api/earn/missions', async (req, res) => {
+  res.json(DEFAULT_MISSIONS);
+});
+
+// POST /api/earn/claim-simple — credit a SIMPLE mission. Trust-on-tap; the
+// user opened the link, we credit on faith. Idempotent (missions_done dedup).
+app.post('/api/earn/claim-simple', async (req, res) => {
+  const user = resolveUser(req);
+  if (!user) return res.status(401).json({ error: 'auth required' });
+  const id = String((req.body || {}).missionId || '');
+  const m = DEFAULT_MISSIONS.find(x => x.id === id && x.kind === 'simple');
+  if (!m) return res.status(400).json({ error: 'unknown simple mission' });
+  if (!dbReady) return res.status(503).json({ error: 'db required' });
+  try {
+    const row = (await dbPool.query('SELECT missions_done, hints_balance FROM users WHERE tg_id = $1', [user.id])).rows[0];
+    if (!row) return res.status(404).json({ error: 'no user row' });
+    const done = Array.isArray(row.missions_done) ? row.missions_done : [];
+    if (done.includes(id)) return res.json({ ok: true, alreadyClaimed: true, hints: row.hints_balance });
+    const newDone = done.concat([id]);
+    const newHints = (row.hints_balance | 0) + (m.reward | 0);
+    await dbPool.query(
+      'UPDATE users SET missions_done = $1::jsonb, hints_balance = $2, updated_at = now() WHERE tg_id = $3',
+      [JSON.stringify(newDone), newHints, user.id]
+    );
+    res.json({ ok: true, reward: m.reward, hints: newHints });
+  } catch (e) {
+    console.error('[earn] claim-simple error:', e.message);
+    res.status(500).json({ error: 'claim failed' });
+  }
+});
+
+// POST /api/earn/verify-boinkers — hit the partner API and credit on success.
+app.post('/api/earn/verify-boinkers', async (req, res) => {
+  const user = resolveUser(req);
+  if (!user) return res.status(401).json({ error: 'auth required' });
+  const id = String((req.body || {}).missionId || '');
+  const m = DEFAULT_MISSIONS.find(x => x.id === id && x.kind === 'boinkers');
+  if (!m) return res.status(400).json({ error: 'unknown boinkers mission' });
+  if (!dbReady) return res.status(503).json({ error: 'db required' });
+  const row = (await dbPool.query('SELECT missions_done, hints_balance FROM users WHERE tg_id = $1', [user.id])).rows[0];
+  if (!row) return res.status(404).json({ error: 'no user row' });
+  const done = Array.isArray(row.missions_done) ? row.missions_done : [];
+  if (done.includes(id)) return res.json({ ok: true, verified: true, alreadyClaimed: true, hints: row.hints_balance });
+  const v = await verifyBoinkers(user.id, id);
+  if (!v.ok) return res.json({ ok: false, verified: false, reason: v.reason || 'not_met' });
+  try {
+    const newDone = done.concat([id]);
+    const newHints = (row.hints_balance | 0) + (m.reward | 0);
+    await dbPool.query(
+      'UPDATE users SET missions_done = $1::jsonb, hints_balance = $2, updated_at = now() WHERE tg_id = $3',
+      [JSON.stringify(newDone), newHints, user.id]
+    );
+    console.log(`[boinkers] verified ${id} for ${user.id} → +${m.reward} hints (total ${newHints})`);
+    res.json({ ok: true, verified: true, reward: m.reward, hints: newHints });
+  } catch (e) {
+    console.error('[boinkers] credit error:', e.message);
+    res.status(500).json({ error: 'credit failed' });
+  }
+});
 
 // ============ Admin endpoints ============
 app.post('/api/admin/peek-answer', async (req, res) => {
