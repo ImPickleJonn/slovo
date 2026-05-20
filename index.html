@@ -263,6 +263,13 @@
   }
   .hint-pill:active { transform: scale(0.93); background: var(--bg-elev-2); }
   .hint-pill .num { color: var(--accent); }
+  /* 0 balance: dimmer + dashed border to hint 'tap to buy' affordance */
+  .hint-pill.zero {
+    border-style: dashed;
+    border-color: var(--text-mute);
+    opacity: 0.75;
+  }
+  .hint-pill.zero .num { color: var(--text-mute); }
   .tile.hinted {
     border: 2px dashed var(--yellow); color: var(--yellow);
     background: transparent;
@@ -709,7 +716,7 @@
     </div>
     <div class="brand" id="brand">SLOVO</div>
     <div class="header-btns">
-      <button class="hint-pill" id="hintPill" style="display:none;" aria-label="Use a hint" title="Use a hint">💡 <span class="num" id="hintNum">0</span></button>
+      <button class="hint-pill" id="hintPill" aria-label="Hints">💡 <span class="num" id="hintNum">0</span></button>
       <button class="streak-pill" id="streakPill" style="display:none;" aria-label="Daily streak" title="Your daily streak — keep it going!"><span>🔥</span><span class="num" id="streakNum">0</span></button>
       <button class="icon-btn" id="btnSettings" aria-label="Settings" title="Settings">⚙️</button>
     </div>
@@ -1149,7 +1156,8 @@ const I18N = {
     'speed.start':'⚡ START','speed.time_up':"Time's up!",'speed.solved_n':'Solved {n}!','speed.skipped':'Skipped','speed.new_best':'🏆 New best!','speed.final_score':'Final score','speed.best_score':'Best score','speed.play_again':'Play Again',
     'game.guess_n_of_6':'Guess {n} of 6','game.not_in_list':'Not in word list','game.not_enough':'Not enough letters',
     'game.you_won':'Brilliant!','game.you_lost':'Better luck tomorrow','game.answer_was':'The word was','game.share_result':'Share Result',
-    'game.next_in':'Next puzzle in','game.hint_used':'Letter revealed','game.no_hints':'No hints left',
+    'game.next_in':'Next puzzle in','game.hint_used':'Letter revealed','game.no_hints':'No hints left — get more in Shop',
+    'hint.tap_to_use':'Tap to use a hint','hint.tap_to_buy':'Tap to buy hints','hint.view':'Your hint balance',
     'home.play_today':"Play Today's Word",
     'stats.title':'Statistics','stats.played':'Played','stats.win_rate':'Win %','stats.current_streak':'Streak','stats.max_streak':'Max Streak','stats.guess_distribution':'Guess Distribution','stats.achievements':'Achievements',
     'ach.unlocked':'Achievement unlocked','ach.how_to_unlock':'How to unlock','ach.streak_reward':'Streak reward','ach.subscribed':'Subscribed','ach.pro_active':'Pro active',
@@ -1176,7 +1184,8 @@ const I18N = {
     'speed.start':'⚡ СТАРТ','speed.time_up':'Время вышло!','speed.solved_n':'+{n}!','speed.skipped':'Пропущено','speed.new_best':'🏆 Новый рекорд!','speed.final_score':'Итог','speed.best_score':'Рекорд','speed.play_again':'Ещё раз',
     'game.guess_n_of_6':'Попытка {n} из 6','game.not_in_list':'Нет в словаре','game.not_enough':'Недостаточно букв',
     'game.you_won':'Великолепно!','game.you_lost':'Завтра повезёт','game.answer_was':'Слово было','game.share_result':'Поделиться',
-    'game.next_in':'Следующее через','game.hint_used':'Буква открыта','game.no_hints':'Подсказок нет',
+    'game.next_in':'Следующее через','game.hint_used':'Буква открыта','game.no_hints':'Подсказок нет — купите в магазине',
+    'hint.tap_to_use':'Нажми, чтобы использовать подсказку','hint.tap_to_buy':'Нажми, чтобы купить подсказки','hint.view':'Баланс подсказок',
     'home.play_today':'Сегодняшнее слово',
     'stats.title':'Статистика','stats.played':'Сыграно','stats.win_rate':'% побед','stats.current_streak':'Серия','stats.max_streak':'Максимум','stats.guess_distribution':'Распределение попыток','stats.achievements':'Достижения',
     'ach.unlocked':'Достижение получено','ach.how_to_unlock':'Как получить','ach.streak_reward':'Награда за серию','ach.subscribed':'Подписка','ach.pro_active':'Pro активен',
@@ -1744,9 +1753,10 @@ function renderStreak() {
   if (streak >= 7) pill.classList.add('hot'); else pill.classList.remove('hot');
 }
 
-// Hint pill visibility: show whenever the user has hints (or active Pro) AND
-// the current game is still in progress AND we're on Home. Hidden in practice
-// mode (practice is pure skill, no IAP balance interaction).
+// Hint pill — ALWAYS visible so the user can see their balance and tap
+// it as either "use a hint" (when in a daily game with hints) or "buy
+// more" (when balance is 0 or in a non-eligible context). The pill's
+// behavior swaps based on context — see useHintOrShop() for the routing.
 function renderHintPill() {
   const me = state.me || {};
   const pill = document.getElementById('hintPill');
@@ -1754,12 +1764,16 @@ function renderHintPill() {
   if (!pill || !num) return;
   const proActive = (me.pro_until || 0) > Date.now();
   const hints = (me.hints_balance | 0);
+  num.textContent = proActive ? '∞' : hints;
+  pill.style.display = '';
+  // Visual cue: dim the pill when it has 0 hints (gently signals 'tap to buy')
+  pill.classList.toggle('zero', !proActive && hints === 0);
+  // Tooltip swap based on usable state
   const onHome = (document.body.dataset.activeTab || 'home') === 'home';
   const inProgress = !state.finished;
   const isDailyMode = state.mode !== 'practice';
-  const visible = onHome && inProgress && isDailyMode && (hints > 0 || proActive);
-  pill.style.display = visible ? '' : 'none';
-  num.textContent = proActive ? '∞' : hints;
+  const canUse = onHome && inProgress && isDailyMode && (hints > 0 || proActive);
+  pill.title = canUse ? t('hint.tap_to_use') : (hints === 0 ? t('hint.tap_to_buy') : t('hint.view'));
 }
 
 // ============ Input ============
@@ -2574,6 +2588,21 @@ async function refreshMe() {
   }
 }
 
+// Smart routing for the hint pill: use a hint if we can, otherwise jump to
+// Shop so the player can buy more. Always does *something* — never feels dead.
+function useHintOrShop() {
+  const me = state.me || {};
+  const proActive  = (me.pro_until || 0) > Date.now();
+  const hasHints   = proActive || (me.hints_balance | 0) > 0;
+  const onHome     = (document.body.dataset.activeTab || 'home') === 'home';
+  const isDailyMode = state.mode !== 'practice';
+  const usable = onHome && !state.finished && isDailyMode && hasHints && !state.busy;
+  if (usable) return useHint();
+  // Not in a state where hints help — bounce to Shop and toast why.
+  if (!hasHints) toast(t('game.no_hints'));
+  switchTab('shop');
+}
+
 async function useHint() {
   if (state.busy || state.finished) return;
   const me = state.me || {};
@@ -2819,8 +2848,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
 
-// Hint pill
-document.getElementById('hintPill').addEventListener('click', useHint);
+// Hint pill — smart-routes to either "use a hint now" or "go to shop to buy"
+document.getElementById('hintPill').addEventListener('click', useHintOrShop);
 
 // Streak pill — tap to explain (mobile users can't see :hover tooltips)
 document.getElementById('streakPill').addEventListener('click', () => {
