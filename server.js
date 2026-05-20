@@ -516,24 +516,6 @@ app.get('/api/skus', (req, res) => {
   });
 });
 
-// ============ Quordle mode (4 boards, 9 guesses, shared guesses) ============
-// Returns 4 distinct random answers + the lang's valid-guess set so the
-// client can play entirely locally. No anti-cheat needed — no rewards.
-app.get('/api/quordle/new', (req, res) => {
-  let lang = String(req.query.lang || 'en');
-  if (!SUPPORTED_LANGS.includes(lang)) lang = 'en';
-  const answers = ANSWERS[lang] || ANSWERS.en;
-  if (!answers || answers.length < 4) return res.status(503).json({ error: 'not enough words for lang' });
-  const pool = [];
-  const used = new Set();
-  while (pool.length < 4) {
-    const w = answers[Math.floor(Math.random() * answers.length)];
-    if (!used.has(w)) { pool.push(w); used.add(w); }
-  }
-  const validSet = VALID[lang] || new Set(pool);
-  res.json({ answers: pool, valid: Array.from(validSet) });
-});
-
 // ============ Practice / Unlimited mode ============
 // Returns a random answer + the lang's valid-guess set so the client can
 // play entirely locally — no per-guess RTT. Practice mode grants nothing
