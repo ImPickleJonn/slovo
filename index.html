@@ -807,24 +807,29 @@ function applyTgSafeArea() {
   const si  = TG.safeAreaInset || {};
   let top = Math.max(csi.top || 0, si.top || 0);
   let bot = Math.max(csi.bottom || 0, si.bottom || 0);
-  // Fallback: many TG client versions return 0 for both insets even when
-  // the chrome bar is visible (the user's iPhone hit exactly this). If
-  // we're inside Telegram AND not fullscreen, force known-good defaults
-  // so the header / tab bar can't hide under the chrome.
+  // Telegram overlays the Close + menu pills on top of our app EVEN in
+  // fullscreen mode (the user hit this — header sat under those pills).
+  // So we apply known-good minimums unconditionally whenever we're inside
+  // Telegram; the API still wins via Math.max if it reports something
+  // larger. Iterations of this bug have all been about gating the
+  // fallback too tightly — don't gate it.
   const isInTelegram = !!TG.initData;
-  const isFullscreen = !!TG.isFullscreen;
-  if (isInTelegram && !isFullscreen) {
-    // Telegram WebApp chrome title bar (Close + title + menu) ≈ 56px
-    // across iOS and Android. iOS status bar is OUTSIDE the WebView so we
-    // don't pad for it here.
-    if (top < 8) top = 56;
+  if (isInTelegram) {
+    const isAndroid = TG.platform === 'android' || TG.platform === 'android_x';
+    // iOS Close/menu overlays sit at ~60px; Android at ~56px.
+    top = Math.max(top, isAndroid ? 56 : 70);
     // Home indicator (iOS) ≈ 34px, Android gesture pill ≈ 16px.
-    if (bot < 8) {
-      bot = (TG.platform === 'android' || TG.platform === 'android_x') ? 16 : 34;
-    }
+    bot = Math.max(bot, isAndroid ? 16 : 34);
   }
+  // Belt-and-braces: set the CSS variable AND the body padding directly.
+  // Direct body padding can't be masked by any CSS-variable indirection or
+  // specificity issue — guarantees the layout pushes down/up.
   document.documentElement.style.setProperty('--tg-safe-top', top + 'px');
   document.documentElement.style.setProperty('--tg-safe-bot', bot + 'px');
+  if (document.body) {
+    document.body.style.paddingTop    = top + 'px';
+    document.body.style.paddingBottom = bot + 'px';
+  }
 }
 if (TG) {
   applyTgSafeArea();
