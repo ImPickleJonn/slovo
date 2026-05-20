@@ -394,6 +394,17 @@
     border-color: var(--green);
     color: var(--green);
   }
+  /* FTUE ghost text — shown in the empty grid before the user has typed
+     anything, ONCE per device. Clears the instant they tap their first key. */
+  .tile.ftue-hint {
+    color: var(--text-mute);
+    opacity: 0.55;
+    border-style: dashed;
+    border-color: var(--tile-empty-border);
+    background: transparent;
+    font-weight: 700;
+    font-style: italic;
+  }
 
   /* ============ Keyboard ============ */
   .kb {
@@ -1827,6 +1838,8 @@ function handleKey(key) {
   // Limit to letters from the active keyboard layout (skip ENTER/BACK)
   const upper = String(key).toUpperCase();
   state.current += upper;
+  // First keypress dismisses the FTUE ghost text forever on this device.
+  if (state.current.length === 1) markFtueSeen();
   haptic('tap');
   sndType();
   renderGrid();
