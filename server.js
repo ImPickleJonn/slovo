@@ -19,6 +19,30 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const TELEGRAM_API = BOT_TOKEN ? `https://api.telegram.org/bot${BOT_TOKEN}` : null;
+
+// Purchase notification → shared pickle-notif-bot. No-op unless both env vars
+// are set, so this is safe to deploy before the notif bot exists.
+const NOTIF_BOT_URL = process.env.NOTIF_BOT_URL || '';
+const NOTIF_SECRET  = process.env.NOTIF_SECRET || '';
+const NOTIF_GAME_ID = 'slovo';
+function notifyPurchase(info) {
+  if (!NOTIF_BOT_URL || !NOTIF_SECRET) return;
+  try {
+    fetch(NOTIF_BOT_URL.replace(/\/+$/, '') + '/api/purchase', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notif-key': NOTIF_SECRET },
+      body: JSON.stringify({
+        game: NOTIF_GAME_ID,
+        sku: info.sku,
+        stars: info.stars,
+        userId: info.userId,
+        username: info.username,
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+  } catch (_e) {}
+}
+
 // Salt for the daily-puzzle shuffle. If unset, falls back to a constant — fine
 // for dev, but set PUZZLE_SALT in production so the daily word can't be derived
 // from a leaked source-only view of the answer list.
@@ -1137,6 +1161,12 @@ app.post('/api/telegram-webhook', async (req, res) => {
             );
           }
           pushPending(payload.uid, payload.sku);
+          notifyPurchase({
+            sku: payload.sku,
+            stars: sp.total_amount || sku.price || 0,
+            userId: payload.uid,
+            username: update.message.from && update.message.from.username,
+          });
           // Send a thanks message to the buyer.
           if (TELEGRAM_API) {
             await fetch(`${TELEGRAM_API}/sendMessage`, {
