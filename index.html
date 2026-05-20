@@ -19,11 +19,15 @@
     --green: #538d4e;
     --yellow: #b59f3b;
     --gray:  #3a3a3c;
+    /* UI accent — kept separate from --green so the primary button + active
+       states don't clash with the Wordle-convention green tiles. */
+    --accent: #3b82f6;
+    --accent-hot: #2563eb;
     --tile-empty-border: #3a3a3c;
     --tile-typed-border: #6a7180;
     --keycap: #818384;
     --keycap-fg: #ffffff;
-    --primary: #538d4e;
+    --primary: #3b82f6;
     --primary-fg: #ffffff;
     --danger: #d9534f;
     /* Two-layer safe area: env() handles the iOS notch on regular web,
@@ -163,19 +167,39 @@
     display: inline-flex; align-items: center; gap: 4px;
   }
   .mode-pill:active { transform: scale(0.94); }
-  .mode-pill.active { background: var(--green); color: #fff; }
+  .mode-pill.active { background: var(--accent); color: #fff; }
+
+  /* Quordle board-switcher dots — sit between mode-pills and grid */
+  .quordle-dots {
+    display: flex; justify-content: center; gap: 6px;
+    margin: 0 12px 4px;
+    flex: 0 0 auto;
+  }
+  .quordle-dot {
+    width: 32px; height: 28px;
+    background: var(--bg-elev); color: var(--text-dim);
+    border: 1.5px solid transparent;
+    border-radius: 8px;
+    font-weight: 800; font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 80ms, background 200ms, border-color 200ms;
+  }
+  .quordle-dot:active { transform: scale(0.92); }
+  .quordle-dot.active   { border-color: var(--accent); color: var(--accent); }
+  .quordle-dot.solved   { background: var(--green); color: #fff; border-color: var(--green); }
+  .quordle-dot.solved.active { box-shadow: 0 0 0 2px rgba(83,141,78,0.4); }
   /* Hint pill — tappable. Pulses gently while game is in progress so the
      player notices it's there. */
   .hint-pill {
     display: inline-flex; align-items: center; gap: 4px;
     background: var(--bg-elev); padding: 4px 10px; border-radius: 14px;
     font-weight: 700; font-size: 13px; color: var(--text);
-    border: 1.5px solid var(--green);
+    border: 1.5px solid var(--accent);
     cursor: pointer; transition: transform 80ms, background 200ms;
     margin-right: 4px;
   }
   .hint-pill:active { transform: scale(0.93); background: var(--bg-elev-2); }
-  .hint-pill .num { color: var(--green); }
+  .hint-pill .num { color: var(--accent); }
   .tile.hinted {
     border: 2px dashed var(--yellow); color: var(--yellow);
     background: transparent;
@@ -187,25 +211,28 @@
   }
 
   main {
-    flex: 1 1 auto; min-height: 0;
+    flex: 1 1 0; min-height: 0;   /* flex: 1 1 0 (not auto) so it actually shrinks under pressure */
     display: flex; flex-direction: column;
-    align-items: center; justify-content: flex-start;
-    padding: 16px 12px 8px;
+    align-items: center; justify-content: center;
+    padding: 8px 12px 4px;
+    overflow: hidden;
+    width: 100%;
   }
 
   /* ============ Grid ============ */
-  /* Constraint: grid must fit between header (56) + mode-pills (~32) +
-     msg-strip (~28) + primary-bar (~62) + keyboard (~180) + tab-bar (~60)
-     + safe-area (~110 worst case). Total chrome ≈ 528px. On a 700-800px
-     viewport that leaves ~170-270px for the grid. We cap max-width AND
-     compute height-based max so it shrinks gracefully on short phones. */
+  /* The grid fills main's available height with a fixed 5:6 aspect ratio.
+     height:100% on the grid pulls its size from main (which is flex 1).
+     aspect-ratio derives the width. max-width caps it on wide / tall
+     screens so the tiles never become absurd. max-height keeps it from
+     overflowing under extreme viewports. */
   .grid {
     display: grid;
     grid-template-rows: repeat(6, 1fr);
     gap: 5px;
-    width: 100%;
-    max-width: min(320px, calc((100dvh - 560px) * 5 / 6));
+    height: 100%;
+    max-height: 380px;
     aspect-ratio: 5 / 6;
+    max-width: 100%;
     margin: 0 auto;
   }
   .row {
@@ -304,7 +331,7 @@
   .btn-primary {
     width: 100%;
     height: 50px;
-    background: var(--green); color: #fff;
+    background: var(--accent); color: #fff;
     border: none; border-radius: 10px;
     font-weight: 800; font-size: 16px; letter-spacing: 1px;
     text-transform: uppercase;
@@ -318,8 +345,8 @@
   .btn-primary.disabled:active { transform: none; }
   .btn-primary.ready { animation: glowPulse 1.6s ease-in-out infinite; }
   @keyframes glowPulse {
-    0%, 100% { box-shadow: 0 2px 0 rgba(0,0,0,0.15), 0 0 0 0 rgba(83,141,78,0); }
-    50%      { box-shadow: 0 2px 0 rgba(0,0,0,0.15), 0 0 18px 2px rgba(83,141,78,0.45); }
+    0%, 100% { box-shadow: 0 2px 0 rgba(0,0,0,0.15), 0 0 0 0 rgba(59,130,246,0); }
+    50%      { box-shadow: 0 2px 0 rgba(0,0,0,0.15), 0 0 18px 2px rgba(59,130,246,0.5); }
   }
   .key:active { transform: scale(0.92); }
   .key[data-color="G"] { background: var(--green); color: #fff; }
@@ -406,7 +433,7 @@
   .sku-desc { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
   .sku-buy {
     flex: 0 0 auto;
-    background: var(--green); color: #fff;
+    background: var(--accent); color: #fff;
     border: none; border-radius: 8px;
     padding: 10px 14px; font-weight: 800; font-size: 14px;
     cursor: pointer; white-space: nowrap;
@@ -508,7 +535,7 @@
     text-align: center; white-space: pre; margin: 12px 0;
   }
   .btn {
-    width: 100%; background: var(--green); color: #fff;
+    width: 100%; background: var(--accent); color: #fff;
     border: none; border-radius: 10px; padding: 14px;
     font-weight: 800; font-size: 16px; cursor: pointer;
     transition: transform 100ms;
@@ -584,7 +611,7 @@
   .tab-btn:active { transform: scale(0.94); }
   .tab-btn-icon { font-size: 22px; line-height: 1; }
   .tab-btn-label { font-size: 11px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
-  .tab-btn.active { color: var(--green); }
+  .tab-btn.active { color: var(--accent); }
   .tab-btn.active .tab-btn-icon { transform: scale(1.1); }
 
   /* On non-home tabs we hide the primary-bar (ENTER) + keyboard. */
@@ -622,7 +649,9 @@
       <div class="mode-pills" id="modePills">
         <button class="mode-pill active" data-mode="daily">📅 <span data-i18n="mode.daily">Daily</span></button>
         <button class="mode-pill" data-mode="practice">♾️ <span data-i18n="mode.practice">Practice</span></button>
+        <button class="mode-pill" data-mode="quordle">🎯 <span data-i18n="mode.quordle">Quordle</span></button>
       </div>
+      <div class="quordle-dots" id="quordleDots" style="display:none;"></div>
       <main>
         <div class="grid" id="grid"></div>
         <div class="msg-strip" id="msgStrip"></div>
@@ -827,7 +856,9 @@ function applyTgSafeArea() {
     const isAndroid = TG.platform === 'android' || TG.platform === 'android_x';
     // iOS Close/menu overlays sit at ~80-90px; Android at ~60px.
     top = Math.max(top, isAndroid ? 60 : 90);
-    bot = Math.max(bot, isAndroid ? 16 : 34);
+    // Bottom just clears the home indicator — 34px felt wasteful per the
+    // user; the indicator is ~10px and the tab bar has its own padding.
+    bot = Math.max(bot, isAndroid ? 8 : 12);
   }
   // Apply BOTH ways: CSS variable (for any selector that uses it) AND a
   // direct inline style on .app (the actual layout container) — bypasses
@@ -1028,7 +1059,7 @@ const I18N = {
     'earn.title':'💰 Earn','earn.section':'Complete tasks · earn free hints','earn.open':'Open','earn.play':'Play','earn.check':'Check','earn.done':'Done','earn.claimed':'+{n} hints','earn.not_yet':'Not yet — keep playing!','earn.no_key':'Verification offline. Try later.',
     'shop.buy_section':'⭐ Buy with Telegram Stars',
     'tab.shop':'Shop','tab.home':'Home','tab.earn':'Earn',
-    'mode.daily':'Daily','mode.practice':'Practice','mode.new_game':'New Game',
+    'mode.daily':'Daily','mode.practice':'Practice','mode.quordle':'Quordle','mode.new_game':'New Game',
     'game.guess_n_of_6':'Guess {n} of 6','game.not_in_list':'Not in word list','game.not_enough':'Not enough letters',
     'game.you_won':'Brilliant!','game.you_lost':'Better luck tomorrow','game.answer_was':'The word was','game.share_result':'Share Result',
     'game.next_in':'Next puzzle in','game.hint_used':'Letter revealed','game.no_hints':'No hints left',
@@ -1053,7 +1084,7 @@ const I18N = {
     'earn.title':'💰 Заработать','earn.section':'Выполняйте задания — получайте бесплатные подсказки','earn.open':'Открыть','earn.play':'Играть','earn.check':'Проверить','earn.done':'Готово','earn.claimed':'+{n} подсказок','earn.not_yet':'Пока нет — попробуйте позже','earn.no_key':'Проверка недоступна.',
     'shop.buy_section':'⭐ Купить за Звёзды',
     'tab.shop':'Магазин','tab.home':'Главная','tab.earn':'Награды',
-    'mode.daily':'Дневное','mode.practice':'Практика','mode.new_game':'Новая игра',
+    'mode.daily':'Дневное','mode.practice':'Практика','mode.quordle':'Квордл','mode.new_game':'Новая игра',
     'game.guess_n_of_6':'Попытка {n} из 6','game.not_in_list':'Нет в словаре','game.not_enough':'Недостаточно букв',
     'game.you_won':'Великолепно!','game.you_lost':'Завтра повезёт','game.answer_was':'Слово было','game.share_result':'Поделиться',
     'game.next_in':'Следующее через','game.hint_used':'Буква открыта','game.no_hints':'Подсказок нет',
@@ -1341,6 +1372,10 @@ function applyTheme(themeId) {
 // ============ Game state ============
 const WORD_LEN = 5;
 const MAX_GUESSES = 6;
+const QUORDLE_MAX_GUESSES = 9;
+function currentMaxGuesses() {
+  return state.mode === 'quordle' ? QUORDLE_MAX_GUESSES : MAX_GUESSES;
+}
 const state = {
   lang: 'en',
   dayIdx: 0,
@@ -1353,9 +1388,15 @@ const state = {
   answer: null,  // revealed at end
   busy: false,
   hint: null,    // {index, letter} | null — active hint on current row, cleared after guess submit
-  mode: 'daily', // 'daily' | 'practice'
+  mode: 'daily', // 'daily' | 'practice' | 'quordle'
   practiceAnswer: null,
   practiceValid: null, // Set<string> — accepted guesses for current practice puzzle
+  // Quordle state — 4 boards, shared guesses (state.guesses), per-board patterns
+  quordleAnswers: [],
+  quordleValid: null,
+  boardPatterns: [[],[],[],[]],
+  boardSolved:   [false,false,false,false],
+  activeBoard: 0,
   me: null,
   skus: [],
   missions: [],
@@ -1479,9 +1520,14 @@ function msg(text) {
 
 // ============ Rendering ============
 function renderGrid() {
+  const maxRows = currentMaxGuesses();
+  // In quordle mode the pattern history we display is the active board's.
+  const patterns = state.mode === 'quordle'
+    ? (state.boardPatterns[state.activeBoard] || [])
+    : state.patterns;
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
-  for (let r = 0; r < MAX_GUESSES; r++) {
+  for (let r = 0; r < maxRows; r++) {
     const row = document.createElement('div');
     row.className = 'row';
     row.dataset.row = r;
@@ -1490,14 +1536,11 @@ function renderGrid() {
       tile.className = 'tile';
       tile.dataset.row = r;
       tile.dataset.col = c;
-      // Existing guess
       if (r < state.guesses.length) {
         tile.textContent = state.guesses[r][c] || '';
         tile.classList.add('revealed');
-        tile.dataset.color = state.patterns[r][c];
+        tile.dataset.color = (patterns[r] && patterns[r][c]) || '-';
       } else if (r === state.guesses.length) {
-        // Current row — show user-typed letters, with the active hint
-        // ghosted at its position if the player hasn't typed there yet.
         const typed = state.current[c];
         if (typed) {
           tile.textContent = typed;
@@ -1511,6 +1554,30 @@ function renderGrid() {
     }
     grid.appendChild(row);
   }
+  // Quordle: thinner tiles since 9 rows → tighter vertical spacing
+  grid.style.gridTemplateRows = `repeat(${maxRows}, 1fr)`;
+}
+
+function renderQuordleDots() {
+  const dotsEl = document.getElementById('quordleDots');
+  if (!dotsEl) return;
+  if (state.mode !== 'quordle') { dotsEl.style.display = 'none'; return; }
+  dotsEl.style.display = '';
+  dotsEl.innerHTML = '';
+  for (let i = 0; i < 4; i++) {
+    const dot = document.createElement('button');
+    dot.className = 'quordle-dot'
+      + (i === state.activeBoard ? ' active' : '')
+      + (state.boardSolved[i] ? ' solved' : '');
+    dot.textContent = state.boardSolved[i] ? '✓' : String(i + 1);
+    dot.addEventListener('click', () => {
+      if (state.activeBoard === i) return;
+      state.activeBoard = i;
+      sndTab(); haptic('sel');
+      renderQuordleDots(); renderGrid(); renderKeyboard();
+    });
+    dotsEl.appendChild(dot);
+  }
 }
 
 function renderKeyboard() {
@@ -1518,9 +1585,15 @@ function renderKeyboard() {
   kb.innerHTML = '';
   const layout = KEYBOARDS[state.lang] || KB_LATIN;
   // Per-key best-known color from all patterns. Priority: G > Y > -.
+  // In quordle mode we show the ACTIVE board's keyboard hints; players
+  // switch boards via the dots and the keyboard updates accordingly.
+  const patterns = state.mode === 'quordle'
+    ? (state.boardPatterns[state.activeBoard] || [])
+    : state.patterns;
   const keyColors = {};
   for (let i = 0; i < state.guesses.length; i++) {
-    const g = state.guesses[i], p = state.patterns[i];
+    const g = state.guesses[i], p = patterns[i];
+    if (!p) continue;
     for (let j = 0; j < g.length; j++) {
       const ch = g[j].toUpperCase();
       const c = p[j];
@@ -1561,6 +1634,9 @@ function renderPrimaryBtn() {
     btn.classList.remove('disabled', 'ready');
     if (state.mode === 'practice') {
       btn.dataset.mode = 'new_practice';
+      lbl.textContent = t('mode.new_game').toUpperCase();
+    } else if (state.mode === 'quordle') {
+      btn.dataset.mode = 'new_quordle';
       lbl.textContent = t('mode.new_game').toUpperCase();
     } else {
       btn.dataset.mode = 'share';
@@ -1668,6 +1744,58 @@ async function submitGuess() {
       renderKeyboard();
     }
     renderPrimaryBtn();
+    return;
+  }
+
+  // Quordle mode: fully local, 4 boards updated per guess.
+  if (state.mode === 'quordle') {
+    state.busy = false;
+    if (!state.quordleValid || !state.quordleValid.has(guess)) {
+      shakeCurrentRow(); toast(t('game.not_in_list'), 'error'); haptic('warn'); sndInvalid(); renderPrimaryBtn(); return;
+    }
+    state.guesses.push(state.current);
+    // Compute pattern per board (or constant green if already solved).
+    const allPatterns = [];
+    for (let i = 0; i < 4; i++) {
+      if (state.boardSolved[i]) {
+        const p = 'G'.repeat(WORD_LEN);
+        state.boardPatterns[i].push(p); allPatterns.push(p);
+      } else {
+        const p = localComputeColorPattern(state.quordleAnswers[i], guess);
+        state.boardPatterns[i].push(p); allPatterns.push(p);
+        if (p === 'G'.repeat(WORD_LEN)) state.boardSolved[i] = true;
+      }
+    }
+    state.current = ''; state.hint = null;
+    // Animate the ACTIVE board's tile flip; updates on other boards are
+    // shown silently (dots reflect solved status).
+    await animateReveal(state.guesses.length - 1, allPatterns[state.activeBoard]);
+    // Auto-advance to next unsolved board if current is solved
+    if (state.boardSolved[state.activeBoard]) {
+      const next = state.boardSolved.findIndex((s, idx) => !s && idx !== state.activeBoard);
+      if (next >= 0) state.activeBoard = next;
+    }
+    const allSolved = state.boardSolved.every(Boolean);
+    const outOfGuesses = state.guesses.length >= QUORDLE_MAX_GUESSES;
+    if (allSolved) {
+      state.finished = true; state.result = 'won';
+      haptic('win'); sndWin();
+      confettiBurst();
+      track('quordle_win', { guesses_used: state.guesses.length });
+      setTimeout(openStats, 1000);
+    } else if (outOfGuesses) {
+      state.finished = true; state.result = 'lost';
+      state.answer = state.quordleAnswers.filter((a, i) => !state.boardSolved[i]).join(', ');
+      haptic('lose'); sndLose();
+      msg(t('game.answer_was') + ': ' + state.answer.toUpperCase());
+      track('quordle_lose');
+      setTimeout(openStats, 1000);
+    } else {
+      const remaining = state.boardSolved.filter(s => !s).length;
+      msg(`${state.guesses.length}/${QUORDLE_MAX_GUESSES} · ${remaining} ${remaining === 1 ? 'board' : 'boards'} left`);
+      renderKeyboard();
+    }
+    renderQuordleDots(); renderGrid(); renderPrimaryBtn();
     return;
   }
 
@@ -2317,6 +2445,29 @@ function localComputeColorPattern(answer, guess) {
   return result.join('');
 }
 
+async function loadQuordle() {
+  try {
+    const r = await fetch('/api/quordle/new?lang=' + encodeURIComponent(state.lang));
+    const j = await r.json();
+    if (!j || !Array.isArray(j.answers) || j.answers.length < 4) {
+      toast(t('err.network'), 'error'); return;
+    }
+    state.quordleAnswers = j.answers.map(w => String(w).toLowerCase());
+    state.quordleValid = new Set((j.valid || []).map(w => String(w).toLowerCase()));
+    for (const a of state.quordleAnswers) state.quordleValid.add(a);
+    state.guesses = []; state.current = '';
+    state.boardPatterns = [[],[],[],[]];
+    state.boardSolved   = [false,false,false,false];
+    state.activeBoard = 0;
+    state.finished = false; state.result = null; state.answer = null;
+    state.hint = null; state._firstGuessTracked = false;
+    renderQuordleDots(); renderGrid(); renderKeyboard(); renderPrimaryBtn(); renderHintPill();
+    msg('');
+  } catch (e) {
+    toast(t('err.network'), 'error');
+  }
+}
+
 async function loadPractice() {
   try {
     const r = await fetch('/api/practice/new?lang=' + encodeURIComponent(state.lang));
@@ -2342,11 +2493,9 @@ async function switchMode(mode) {
   try { localStorage.setItem('slovo.mode', mode); } catch (_) {}
   sndTab(); haptic('sel');
   track('mode_switch', { mode });
-  if (mode === 'practice') {
-    await loadPractice();
-  } else {
-    await loadToday();
-  }
+  if (mode === 'practice')      await loadPractice();
+  else if (mode === 'quordle')  await loadQuordle();
+  else                          await loadToday();
 }
 
 async function loadToday(force) {
@@ -2387,6 +2536,7 @@ document.getElementById('btnPrimary').addEventListener('click', () => {
   const mode = document.getElementById('btnPrimary').dataset.mode;
   if (mode === 'share') return shareResult();
   if (mode === 'new_practice') return loadPractice();
+  if (mode === 'new_quordle')  return loadQuordle();
   if (state.current.length === WORD_LEN && !state.busy && !state.finished) return submitGuess();
 });
 
@@ -2460,10 +2610,11 @@ document.addEventListener('keydown', (e) => {
   await refreshMe();
   // Honor last-active mode (defaults to daily)
   const savedMode = (() => { try { return localStorage.getItem('slovo.mode') || 'daily'; } catch (_) { return 'daily'; } })();
-  if (savedMode === 'practice') {
-    state.mode = 'practice';
-    document.querySelectorAll('.mode-pill').forEach(p => p.classList.toggle('active', p.dataset.mode === 'practice'));
-    await loadPractice();
+  if (savedMode === 'practice' || savedMode === 'quordle') {
+    state.mode = savedMode;
+    document.querySelectorAll('.mode-pill').forEach(p => p.classList.toggle('active', p.dataset.mode === savedMode));
+    if (savedMode === 'practice') await loadPractice();
+    else                          await loadQuordle();
   } else {
     await loadToday();
   }
