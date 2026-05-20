@@ -410,7 +410,9 @@
   .kb {
     flex: 0 0 auto;
     width: 100%; max-width: 500px;
-    padding: 6px 4px calc(6px + var(--safe-bot));
+    /* NO --safe-bot here — .app handles the global safe area; the tab-bar
+       sits below the keyboard and is itself padded by .app. */
+    padding: 6px 4px 6px;
     background: var(--bg);
   }
   .kb-row {
@@ -436,12 +438,12 @@
   .primary-bar {
     flex: 0 0 auto;
     width: 100%; max-width: 500px;
-    padding: 4px 8px 6px;
+    padding: 2px 8px 4px;
     background: var(--bg);
   }
   .btn-primary {
     width: 100%;
-    height: 50px;
+    height: 46px;
     background: var(--accent); color: #fff;
     border: none; border-radius: 10px;
     font-weight: 800; font-size: 16px; letter-spacing: 1px;
@@ -718,19 +720,20 @@
     margin: 0 auto;
     background: var(--bg);
     border-top: 1px solid var(--border);
-    padding-bottom: var(--safe-bot);
+    /* NO padding-bottom — .app already insets by --safe-bot. Adding it
+       here double-counted the safe area and made the bar feel huge. */
   }
   .tab-btn {
     flex: 1 1 0;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 8px 4px 8px;
+    padding: 5px 4px;
     background: transparent; border: none; cursor: pointer;
     color: var(--text-dim); transition: color 160ms, transform 80ms;
-    gap: 2px;
+    gap: 1px;
   }
   .tab-btn:active { transform: scale(0.94); }
-  .tab-btn-icon { font-size: 22px; line-height: 1; }
-  .tab-btn-label { font-size: 11px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
+  .tab-btn-icon { font-size: 20px; line-height: 1; }
+  .tab-btn-label { font-size: 10px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
   .tab-btn.active { color: var(--accent); }
   .tab-btn.active .tab-btn-icon { transform: scale(1.1); }
 
@@ -988,11 +991,16 @@ function applyTgSafeArea() {
   const isInTelegram = !!TG.initData;
   if (isInTelegram) {
     const isAndroid = TG.platform === 'android' || TG.platform === 'android_x';
-    // iOS Close/menu overlays sit at ~80-90px; Android at ~60px.
-    top = Math.max(top, isAndroid ? 60 : 90);
-    // Bottom just clears the home indicator — 34px felt wasteful per the
-    // user; the indicator is ~10px and the tab bar has its own padding.
-    bot = Math.max(bot, isAndroid ? 8 : 12);
+    // iOS keeps Close/menu overlay pills on top of our WebView even in
+    // fullscreen — needs a chunky fallback if the API doesn't report
+    // them. Android, by contrast, ACTUALLY hides chrome in fullscreen,
+    // so we trust the API there and don't force any minimum (forcing
+    // 60px was eating ~60px on devices that didn't need it, making the
+    // whole layout feel cramped).
+    if (!isAndroid) {
+      top = Math.max(top, 90);
+      bot = Math.max(bot, 12);
+    }
   }
   // Apply BOTH ways: CSS variable (for any selector that uses it) AND a
   // direct inline style on .app (the actual layout container) — bypasses
