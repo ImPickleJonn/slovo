@@ -1677,10 +1677,26 @@ function msg(text) {
 }
 
 // ============ Rendering ============
+// First-time-user-experience ghost text. Shown once per device, only in
+// daily / practice modes, only when the grid is completely empty. Clears
+// the instant the player taps any letter (slovo.seenFtue flag).
+const FTUE_TEXT = ['GUESS', 'THE', 'WORD', 'EACH', 'DAY'];
+function shouldShowFtue() {
+  if (state.mode !== 'daily' && state.mode !== 'practice') return false;
+  if (state.guesses.length > 0) return false;
+  if (state.current && state.current.length > 0) return false;
+  if (state.hint) return false;
+  try { return !localStorage.getItem('slovo.seenFtue'); } catch (_) { return true; }
+}
+function markFtueSeen() {
+  try { localStorage.setItem('slovo.seenFtue', '1'); } catch (_) {}
+}
+
 function renderGrid() {
   const maxRows = currentMaxGuesses();
   const patterns = state.patterns;
   const grid = document.getElementById('grid');
+  const ftue = shouldShowFtue();
   grid.innerHTML = '';
   for (let r = 0; r < maxRows; r++) {
     const row = document.createElement('div');
@@ -1703,7 +1719,16 @@ function renderGrid() {
         } else if (state.hint && state.hint.index === c) {
           tile.textContent = state.hint.letter.toUpperCase();
           tile.classList.add('hinted');
+        } else if (ftue && r < FTUE_TEXT.length) {
+          // Ghost instruction on the empty current row (row 0 by default)
+          const word = FTUE_TEXT[r];
+          if (c < word.length) { tile.textContent = word[c]; tile.classList.add('ftue-hint'); }
         }
+      } else if (ftue && r < FTUE_TEXT.length) {
+        // Ghost instruction on rows further down — top-to-bottom reads
+        // 'GUESS / THE / WORD / EACH / DAY' as a single phrase.
+        const word = FTUE_TEXT[r];
+        if (c < word.length) { tile.textContent = word[c]; tile.classList.add('ftue-hint'); }
       }
       row.appendChild(tile);
     }
