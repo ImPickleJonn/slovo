@@ -762,8 +762,24 @@ function applyTgSafeArea() {
   if (!TG) return;
   const csi = TG.contentSafeAreaInset || {};
   const si  = TG.safeAreaInset || {};
-  const top = Math.max(csi.top || 0, si.top || 0);
-  const bot = Math.max(csi.bottom || 0, si.bottom || 0);
+  let top = Math.max(csi.top || 0, si.top || 0);
+  let bot = Math.max(csi.bottom || 0, si.bottom || 0);
+  // Fallback: many TG client versions return 0 for both insets even when
+  // the chrome bar is visible (the user's iPhone hit exactly this). If
+  // we're inside Telegram AND not fullscreen, force known-good defaults
+  // so the header / tab bar can't hide under the chrome.
+  const isInTelegram = !!TG.initData;
+  const isFullscreen = !!TG.isFullscreen;
+  if (isInTelegram && !isFullscreen) {
+    // Telegram WebApp chrome title bar (Close + title + menu) ≈ 56px
+    // across iOS and Android. iOS status bar is OUTSIDE the WebView so we
+    // don't pad for it here.
+    if (top < 8) top = 56;
+    // Home indicator (iOS) ≈ 34px, Android gesture pill ≈ 16px.
+    if (bot < 8) {
+      bot = (TG.platform === 'android' || TG.platform === 'android_x') ? 16 : 34;
+    }
+  }
   document.documentElement.style.setProperty('--tg-safe-top', top + 'px');
   document.documentElement.style.setProperty('--tg-safe-bot', bot + 'px');
 }
