@@ -319,13 +319,31 @@ function seededShuffle(arr, seedStr) {
   return out;
 }
 const _shuffleCache = {};
-function getDailyAnswer(lang, dayIdx) {
+// Per-user daily word: each player on each (lang, day) gets a deterministic
+// index into the shuffled answer list, derived from a SHA-256 hash of
+// (salt + userId + dayIdx + lang). Same user + same day = same word
+// (refresh-safe). Different users on the same day = different words
+// (eliminates spoilers when friends discuss in Telegram groups).
+// When no userId is provided (e.g. unauthenticated dev mode), we fall back
+// to the original per-language daily mechanic so the dev playground still
+// behaves like classic Wordle.
+function getDailyAnswer(lang, dayIdx, userId) {
   const list = ANSWERS[lang] || ANSWERS.en;
   if (!list || !list.length) return null;
   if (!_shuffleCache[lang]) {
     _shuffleCache[lang] = seededShuffle(list, `${PUZZLE_SALT}|${lang}`);
   }
-  return _shuffleCache[lang][dayIdx % _shuffleCache[lang].length];
+  const shuffled = _shuffleCache[lang];
+  let idx;
+  if (userId) {
+    const buf = crypto.createHash('sha256')
+      .update(`${PUZZLE_SALT}|user${userId}|day${dayIdx}|${lang}`)
+      .digest();
+    idx = buf.readUInt32BE(0) % shuffled.length;
+  } else {
+    idx = dayIdx % shuffled.length;
+  }
+  return shuffled[idx];
 }
 
 // ============ Wordle color algorithm (correct duplicate handling) ============
@@ -642,7 +660,8 @@ app.post('/api/today', async (req, res) => {
   }
   const useDay = (typeof dayIdx === 'number') ? dayIdx : today;
   if (useDay < 0 || useDay > today) return res.status(400).json({ error: 'invalid day' });
-  const answer = getDailyAnswer(lang, useDay);
+  // Per-user word: pass user.id so this player gets their own daily puzzle.
+  const answer = getDailyAnswer(lang, useDay, user && user.id);
   if (!answer) return res.status(503).json({ error: 'no words loaded for lang' });
   // Load existing progress so refreshes resume the game.
   let progress = { guesses: [], patterns: [], state: 'playing' };
@@ -695,7 +714,8 @@ app.post('/api/guess', async (req, res) => {
   const valid = VALID[lang] || new Set();
   if (!valid.has(guess)) return res.status(400).json({ error: 'not in word list', code: 'not_a_word' });
 
-  const answer = getDailyAnswer(lang, dayIdx);
+  // Per-user word: this is the same puzzle this user got from /api/today.
+  const answer = getDailyAnswer(lang, dayIdx, user && user.id);
   if (!answer) return res.status(503).json({ error: 'no puzzle for lang' });
 
   // Load + mutate progress. If no DB, we still compute and return — client
@@ -954,7 +974,8 @@ app.post('/api/use-hint', async (req, res) => {
   }
   const prog = (await dbPool.query('SELECT guesses, patterns, state FROM daily_progress WHERE tg_id=$1 AND lang=$2 AND day_idx=$3', [user.id, lang, day])).rows[0];
   if (prog && prog.state !== 'playing') return res.status(409).json({ error: 'game finished' });
-  const answer = getDailyAnswer(lang, day);
+  // Per-user word
+  const answer = getDailyAnswer(lang, day, user.id);
   if (!answer) return res.status(503).json({ error: 'no puzzle' });
   // Reveal a letter not yet known to the player (not green anywhere in their guesses).
   const greens = new Set();
@@ -1546,9 +1567,11 @@ app.post('/api/earn/verify-boinkers', async (req, res) => {
 app.post('/api/admin/peek-answer', async (req, res) => {
   const user = resolveUser(req);
   if (!user || !isAdmin(user.id)) return res.status(403).end();
-  const { lang = 'en', dayIdx } = req.body || {};
+  const { lang = 'en', dayIdx, peekUid } = req.body || {};
   const day = typeof dayIdx === 'number' ? dayIdx : currentDayIdx();
-  res.json({ lang, dayIdx: day, answer: getDailyAnswer(lang, day) });
+  // Admin can peek any user's daily word by passing peekUid, defaults to self.
+  const uid = peekUid != null ? peekUid : user.id;
+  res.json({ lang, dayIdx: day, peekUid: uid, answer: getDailyAnswer(lang, day, uid) });
 });
 
 // ============ Boot ============
