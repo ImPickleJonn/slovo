@@ -188,6 +188,27 @@
   .quordle-dot.active   { border-color: var(--accent); color: var(--accent); }
   .quordle-dot.solved   { background: var(--green); color: #fff; border-color: var(--green); }
   .quordle-dot.solved.active { box-shadow: 0 0 0 2px rgba(83,141,78,0.4); }
+
+  /* Speed-mode HUD — timer + score chips, lives between mode-pills and grid */
+  .speed-hud {
+    display: flex; justify-content: center; gap: 8px; align-items: center;
+    margin: 0 12px 4px;
+    font-weight: 800; font-size: 13px;
+    flex: 0 0 auto;
+  }
+  .speed-timer, .speed-score, .speed-best {
+    background: var(--bg-elev); padding: 4px 12px;
+    border-radius: 12px; color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .speed-timer { color: var(--accent); min-width: 64px; text-align: center; }
+  .speed-timer.warn { color: #ff7a3d; animation: pulseWarn 0.6s ease-in-out infinite; }
+  .speed-timer.crit { color: var(--danger); animation: pulseWarn 0.3s ease-in-out infinite; }
+  @keyframes pulseWarn {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.08); }
+  }
+  .speed-score .num, .speed-best .num { color: var(--accent); }
   /* Hint pill — tappable. Pulses gently while game is in progress so the
      player notices it's there. */
   .hint-pill {
@@ -650,6 +671,12 @@
         <button class="mode-pill active" data-mode="daily">📅 <span data-i18n="mode.daily">Daily</span></button>
         <button class="mode-pill" data-mode="practice">♾️ <span data-i18n="mode.practice">Practice</span></button>
         <button class="mode-pill" data-mode="quordle">🎯 <span data-i18n="mode.quordle">Quordle</span></button>
+        <button class="mode-pill" data-mode="speed">⚡ <span data-i18n="mode.speed">Speed</span></button>
+      </div>
+      <div class="speed-hud" id="speedHud" style="display:none;">
+        <span class="speed-timer" id="speedTimer">2:00</span>
+        <span class="speed-score">⭐ <span id="speedScore">0</span></span>
+        <span class="speed-best">🏆 <span id="speedBest">0</span></span>
       </div>
       <div class="quordle-dots" id="quordleDots" style="display:none;"></div>
       <main>
@@ -1059,7 +1086,8 @@ const I18N = {
     'earn.title':'💰 Earn','earn.section':'Complete tasks · earn free hints','earn.open':'Open','earn.play':'Play','earn.check':'Check','earn.done':'Done','earn.claimed':'+{n} hints','earn.not_yet':'Not yet — keep playing!','earn.no_key':'Verification offline. Try later.',
     'shop.buy_section':'⭐ Buy with Telegram Stars',
     'tab.shop':'Shop','tab.home':'Home','tab.earn':'Earn',
-    'mode.daily':'Daily','mode.practice':'Practice','mode.quordle':'Quordle','mode.new_game':'New Game',
+    'mode.daily':'Daily','mode.practice':'Practice','mode.quordle':'Quordle','mode.speed':'Speed','mode.new_game':'New Game',
+    'speed.start':'⚡ START','speed.time_up':"Time's up!",'speed.solved_n':'Solved {n}!','speed.skipped':'Skipped','speed.new_best':'🏆 New best!','speed.final_score':'Final score','speed.best_score':'Best score','speed.play_again':'Play Again',
     'game.guess_n_of_6':'Guess {n} of 6','game.not_in_list':'Not in word list','game.not_enough':'Not enough letters',
     'game.you_won':'Brilliant!','game.you_lost':'Better luck tomorrow','game.answer_was':'The word was','game.share_result':'Share Result',
     'game.next_in':'Next puzzle in','game.hint_used':'Letter revealed','game.no_hints':'No hints left',
@@ -1084,7 +1112,8 @@ const I18N = {
     'earn.title':'💰 Заработать','earn.section':'Выполняйте задания — получайте бесплатные подсказки','earn.open':'Открыть','earn.play':'Играть','earn.check':'Проверить','earn.done':'Готово','earn.claimed':'+{n} подсказок','earn.not_yet':'Пока нет — попробуйте позже','earn.no_key':'Проверка недоступна.',
     'shop.buy_section':'⭐ Купить за Звёзды',
     'tab.shop':'Магазин','tab.home':'Главная','tab.earn':'Награды',
-    'mode.daily':'Дневное','mode.practice':'Практика','mode.quordle':'Квордл','mode.new_game':'Новая игра',
+    'mode.daily':'Дневное','mode.practice':'Практика','mode.quordle':'Квордл','mode.speed':'Скорость','mode.new_game':'Новая игра',
+    'speed.start':'⚡ СТАРТ','speed.time_up':'Время вышло!','speed.solved_n':'+{n}!','speed.skipped':'Пропущено','speed.new_best':'🏆 Новый рекорд!','speed.final_score':'Итог','speed.best_score':'Рекорд','speed.play_again':'Ещё раз',
     'game.guess_n_of_6':'Попытка {n} из 6','game.not_in_list':'Нет в словаре','game.not_enough':'Недостаточно букв',
     'game.you_won':'Великолепно!','game.you_lost':'Завтра повезёт','game.answer_was':'Слово было','game.share_result':'Поделиться',
     'game.next_in':'Следующее через','game.hint_used':'Буква открыта','game.no_hints':'Подсказок нет',
@@ -1397,6 +1426,15 @@ const state = {
   boardPatterns: [[],[],[],[]],
   boardSolved:   [false,false,false,false],
   activeBoard: 0,
+  // Speed state
+  speedSeconds: 120,
+  speedScore: 0,
+  speedBest: 0,
+  speedRunning: false,
+  speedDeadline: 0,
+  speedAnswer: null,
+  speedValid: null,
+  speedTickHandle: null,
   me: null,
   skus: [],
   missions: [],
@@ -1638,10 +1676,20 @@ function renderPrimaryBtn() {
     } else if (state.mode === 'quordle') {
       btn.dataset.mode = 'new_quordle';
       lbl.textContent = t('mode.new_game').toUpperCase();
+    } else if (state.mode === 'speed') {
+      btn.dataset.mode = 'new_speed';
+      lbl.textContent = t('speed.play_again').toUpperCase();
+      btn.classList.add('ready');
     } else {
       btn.dataset.mode = 'share';
       lbl.textContent = (t('game.share_result') || 'Share Result').toUpperCase();
     }
+  } else if (state.mode === 'speed' && !state.speedRunning) {
+    // Pre-run state — big START button
+    btn.classList.remove('disabled');
+    btn.classList.add('ready');
+    btn.dataset.mode = 'start_speed';
+    lbl.textContent = t('speed.start').toUpperCase();
   } else {
     btn.dataset.mode = 'enter';
     lbl.textContent = (t('common.enter') !== 'common.enter' ? t('common.enter') : 'ENTER').toUpperCase();
@@ -1744,6 +1792,42 @@ async function submitGuess() {
       renderKeyboard();
     }
     renderPrimaryBtn();
+    return;
+  }
+
+  // Speed mode: fully local, time-attack scoring.
+  if (state.mode === 'speed') {
+    state.busy = false;
+    if (!state.speedRunning) { renderPrimaryBtn(); return; } // shouldn't happen
+    if (!state.speedValid || !state.speedValid.has(guess)) {
+      shakeCurrentRow(); toast(t('game.not_in_list'), 'error'); haptic('warn'); sndInvalid(); renderPrimaryBtn(); return;
+    }
+    const pattern = localComputeColorPattern(state.speedAnswer, guess);
+    state.guesses.push(state.current);
+    state.patterns.push(pattern);
+    state.current = ''; state.hint = null;
+    await animateReveal(state.guesses.length - 1, pattern);
+    if (pattern === 'G'.repeat(WORD_LEN)) {
+      // Solved — score++, load next word, animate score chip
+      state.speedScore += 1;
+      haptic('win'); sndStreak();
+      track('speed_solve', { score: state.speedScore, guesses_used: state.guesses.length });
+      const ok = await loadSpeedNextWord();
+      if (!ok) { endSpeedRun('error'); return; }
+      renderGrid(); renderKeyboard(); renderPrimaryBtn();
+      updateSpeedHud(Math.max(0, Math.ceil((state.speedDeadline - Date.now()) / 1000)));
+    } else if (state.guesses.length >= MAX_GUESSES) {
+      // Failed this word — penalty + next word
+      state.speedDeadline -= SPEED_FAIL_PENALTY_S * 1000;
+      haptic('warn'); sndLose();
+      toast('−' + SPEED_FAIL_PENALTY_S + 's · ' + state.speedAnswer.toUpperCase(), 'error');
+      track('speed_fail', { answer: state.speedAnswer });
+      const ok = await loadSpeedNextWord();
+      if (!ok) { endSpeedRun('error'); return; }
+      renderGrid(); renderKeyboard(); renderPrimaryBtn();
+    } else {
+      renderKeyboard(); renderPrimaryBtn();
+    }
     return;
   }
 
@@ -2445,6 +2529,109 @@ function localComputeColorPattern(answer, guess) {
   return result.join('');
 }
 
+// ============ Speed mode ============
+// 2-minute time attack. Solve as many random words as possible. Each solve
+// = +1 score + instant next word. Each fail (6 guesses) = -10s penalty +
+// next word. Time up = game over.
+const SPEED_DURATION_S = 120;
+const SPEED_FAIL_PENALTY_S = 10;
+function speedBestKey() { return 'slovo.speed.best.' + state.lang; }
+function loadSpeedBest() {
+  try { state.speedBest = parseInt(localStorage.getItem(speedBestKey()) || '0', 10) || 0; }
+  catch (_) { state.speedBest = 0; }
+}
+function saveSpeedBest(score) {
+  if (score > state.speedBest) {
+    state.speedBest = score;
+    try { localStorage.setItem(speedBestKey(), String(score)); } catch (_) {}
+    return true;
+  }
+  return false;
+}
+
+async function loadSpeedNextWord() {
+  // Reuse the practice endpoint — gives us a random answer + valid set.
+  try {
+    const r = await fetch('/api/practice/new?lang=' + encodeURIComponent(state.lang));
+    const j = await r.json();
+    if (!j || !j.answer) return false;
+    state.speedAnswer = String(j.answer).toLowerCase();
+    state.speedValid  = new Set((j.valid || []).map(w => String(w).toLowerCase()));
+    state.speedValid.add(state.speedAnswer);
+    state.guesses = []; state.patterns = []; state.current = ''; state.hint = null;
+    return true;
+  } catch (e) { return false; }
+}
+
+async function loadSpeed() {
+  loadSpeedBest();
+  state.speedScore = 0;
+  state.speedRunning = false;
+  state.speedDeadline = 0;
+  state.guesses = []; state.patterns = []; state.current = '';
+  state.finished = false; state.result = null; state.answer = null;
+  state.hint = null; state._firstGuessTracked = false;
+  if (state.speedTickHandle) { clearInterval(state.speedTickHandle); state.speedTickHandle = null; }
+  // Pre-load first word so START is instant
+  await loadSpeedNextWord();
+  renderGrid(); renderKeyboard(); renderHintPill();
+  updateSpeedHud(SPEED_DURATION_S);
+  document.getElementById('speedHud').style.display = '';
+  msg(t('speed.start') + '');
+  // Show START on the big button (instead of disabled ENTER)
+  renderPrimaryBtn();
+}
+
+function startSpeedRun() {
+  if (state.speedRunning) return;
+  state.speedRunning = true;
+  state.speedDeadline = Date.now() + SPEED_DURATION_S * 1000;
+  if (state.speedTickHandle) clearInterval(state.speedTickHandle);
+  state.speedTickHandle = setInterval(speedTick, 250);
+  speedTick();
+  msg('');
+  renderPrimaryBtn();
+  track('speed_start', { lang: state.lang });
+}
+
+function speedTick() {
+  if (!state.speedRunning) return;
+  const remainingMs = state.speedDeadline - Date.now();
+  const remaining = Math.max(0, Math.ceil(remainingMs / 1000));
+  updateSpeedHud(remaining);
+  if (remaining <= 0) endSpeedRun('timeout');
+}
+
+function updateSpeedHud(seconds) {
+  const t = document.getElementById('speedTimer');
+  const s = document.getElementById('speedScore');
+  const b = document.getElementById('speedBest');
+  if (!t || !s || !b) return;
+  const m = Math.floor(seconds / 60), sec = seconds % 60;
+  t.textContent = m + ':' + String(sec).padStart(2, '0');
+  t.classList.toggle('warn', seconds <= 30 && seconds > 10);
+  t.classList.toggle('crit', seconds <= 10);
+  s.textContent = state.speedScore;
+  b.textContent = state.speedBest;
+}
+
+async function endSpeedRun(reason) {
+  state.speedRunning = false;
+  if (state.speedTickHandle) { clearInterval(state.speedTickHandle); state.speedTickHandle = null; }
+  state.finished = true;
+  state.result = state.speedScore > 0 ? 'won' : 'lost';
+  state.answer = state.speedAnswer;
+  const isNewBest = saveSpeedBest(state.speedScore);
+  if (isNewBest) confettiBurst();
+  haptic(isNewBest ? 'win' : 'tap');
+  isNewBest ? sndStreak() : sndLose();
+  track('speed_end', { reason, score: state.speedScore, lang: state.lang, new_best: isNewBest });
+  updateSpeedHud(0);
+  msg(t('speed.time_up') + ' · ' + state.speedScore + ' ' + (isNewBest ? '🏆' : ''));
+  renderPrimaryBtn();
+  setTimeout(openStats, 700);
+}
+
 async function loadQuordle() {
   try {
     const r = await fetch('/api/quordle/new?lang=' + encodeURIComponent(state.lang));
@@ -2493,8 +2680,13 @@ async function switchMode(mode) {
   try { localStorage.setItem('slovo.mode', mode); } catch (_) {}
   sndTab(); haptic('sel');
   track('mode_switch', { mode });
+  // Hide all mode-specific HUDs first
+  document.getElementById('quordleDots').style.display = 'none';
+  document.getElementById('speedHud').style.display = 'none';
+  if (state.speedTickHandle) { clearInterval(state.speedTickHandle); state.speedTickHandle = null; }
   if (mode === 'practice')      await loadPractice();
   else if (mode === 'quordle')  await loadQuordle();
+  else if (mode === 'speed')    await loadSpeed();
   else                          await loadToday();
 }
 
@@ -2537,6 +2729,8 @@ document.getElementById('btnPrimary').addEventListener('click', () => {
   if (mode === 'share') return shareResult();
   if (mode === 'new_practice') return loadPractice();
   if (mode === 'new_quordle')  return loadQuordle();
+  if (mode === 'start_speed')  return startSpeedRun();
+  if (mode === 'new_speed')    return loadSpeed();
   if (state.current.length === WORD_LEN && !state.busy && !state.finished) return submitGuess();
 });
 
@@ -2610,11 +2804,12 @@ document.addEventListener('keydown', (e) => {
   await refreshMe();
   // Honor last-active mode (defaults to daily)
   const savedMode = (() => { try { return localStorage.getItem('slovo.mode') || 'daily'; } catch (_) { return 'daily'; } })();
-  if (savedMode === 'practice' || savedMode === 'quordle') {
+  if (savedMode === 'practice' || savedMode === 'quordle' || savedMode === 'speed') {
     state.mode = savedMode;
     document.querySelectorAll('.mode-pill').forEach(p => p.classList.toggle('active', p.dataset.mode === savedMode));
-    if (savedMode === 'practice') await loadPractice();
-    else                          await loadQuordle();
+    if      (savedMode === 'practice') await loadPractice();
+    else if (savedMode === 'quordle')  await loadQuordle();
+    else                                await loadSpeed();
   } else {
     await loadToday();
   }
