@@ -99,13 +99,20 @@
     overscroll-behavior: none; touch-action: manipulation;
     user-select: none; -webkit-user-select: none;
   }
-  body { padding-top: var(--safe-top); padding-bottom: var(--safe-bot); }
+  /* No padding on body — it'd just clip content under overflow:hidden.
+     Safe-area padding moves INTO .app via border-box so children get
+     correctly inset space and our header/tab-bar end up visible. */
 
   /* ============ Layout ============ */
   .app {
     display: flex; flex-direction: column;
-    height: 100vh; max-height: 100vh; overflow: hidden;
+    height: 100vh; height: 100dvh;   /* dvh = dynamic viewport — handles TG chrome shifts */
+    max-height: 100vh; max-height: 100dvh;
+    overflow: hidden;
     max-width: 500px; margin: 0 auto;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bot);
+    box-sizing: border-box;
   }
   header {
     flex: 0 0 56px; height: 56px;
@@ -187,12 +194,17 @@
   }
 
   /* ============ Grid ============ */
+  /* Constraint: grid must fit between header (56) + mode-pills (~32) +
+     msg-strip (~28) + primary-bar (~62) + keyboard (~180) + tab-bar (~60)
+     + safe-area (~110 worst case). Total chrome ≈ 528px. On a 700-800px
+     viewport that leaves ~170-270px for the grid. We cap max-width AND
+     compute height-based max so it shrinks gracefully on short phones. */
   .grid {
     display: grid;
     grid-template-rows: repeat(6, 1fr);
-    gap: 6px;
+    gap: 5px;
     width: 100%;
-    max-width: min(360px, calc((100vh - 320px) * 5 / 6));
+    max-width: min(320px, calc((100dvh - 560px) * 5 / 6));
     aspect-ratio: 5 / 6;
     margin: 0 auto;
   }
@@ -807,28 +819,25 @@ function applyTgSafeArea() {
   const si  = TG.safeAreaInset || {};
   let top = Math.max(csi.top || 0, si.top || 0);
   let bot = Math.max(csi.bottom || 0, si.bottom || 0);
-  // Telegram overlays the Close + menu pills on top of our app EVEN in
-  // fullscreen mode (the user hit this — header sat under those pills).
-  // So we apply known-good minimums unconditionally whenever we're inside
-  // Telegram; the API still wins via Math.max if it reports something
-  // larger. Iterations of this bug have all been about gating the
-  // fallback too tightly — don't gate it.
+  // Telegram overlays Close + menu pills ON TOP of our WebView even in
+  // fullscreen mode. Apply known-good minimums unconditionally whenever
+  // we're inside Telegram; the API value wins via Math.max if it's larger.
   const isInTelegram = !!TG.initData;
   if (isInTelegram) {
     const isAndroid = TG.platform === 'android' || TG.platform === 'android_x';
-    // iOS Close/menu overlays sit at ~60px; Android at ~56px.
-    top = Math.max(top, isAndroid ? 56 : 70);
-    // Home indicator (iOS) ≈ 34px, Android gesture pill ≈ 16px.
+    // iOS Close/menu overlays sit at ~80-90px; Android at ~60px.
+    top = Math.max(top, isAndroid ? 60 : 90);
     bot = Math.max(bot, isAndroid ? 16 : 34);
   }
-  // Belt-and-braces: set the CSS variable AND the body padding directly.
-  // Direct body padding can't be masked by any CSS-variable indirection or
-  // specificity issue — guarantees the layout pushes down/up.
+  // Apply BOTH ways: CSS variable (for any selector that uses it) AND a
+  // direct inline style on .app (the actual layout container) — bypasses
+  // any CSS-variable indirection or specificity collision.
   document.documentElement.style.setProperty('--tg-safe-top', top + 'px');
   document.documentElement.style.setProperty('--tg-safe-bot', bot + 'px');
-  if (document.body) {
-    document.body.style.paddingTop    = top + 'px';
-    document.body.style.paddingBottom = bot + 'px';
+  const app = document.getElementById('app');
+  if (app) {
+    app.style.paddingTop    = top + 'px';
+    app.style.paddingBottom = bot + 'px';
   }
 }
 if (TG) {
