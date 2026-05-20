@@ -223,6 +223,36 @@
     box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 1.5px var(--border);
   }
   .ach-toast.locked .ach-toast-label { color: var(--text-dim); }
+  /* When anchored to a tapped achievement cell, JS sets top/left
+     positioning. We swap from the centered transform to a none-transform
+     so the tooltip floats wherever JS pins it. Arrow points DOWN to the
+     anchor (or UP if flipped below). */
+  .ach-toast.anchored {
+    transform: none;
+    max-width: 280px;
+  }
+  .ach-toast.anchored.show { transform: none; }
+  .ach-toast.anchored::after {
+    content: '';
+    position: absolute;
+    left: 50%; margin-left: -8px;
+    width: 0; height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+  }
+  /* Default: arrow on the BOTTOM (tooltip is above the cell, arrow points down) */
+  .ach-toast.anchored::after {
+    bottom: -8px;
+    border-top: 8px solid var(--bg-elev-2);
+  }
+  .ach-toast.anchored:not(.locked)::after { border-top-color: var(--accent-hot, #2563eb); }
+  /* When flipped below (no room above), arrow on the TOP pointing up */
+  .ach-toast.anchored.below::after {
+    bottom: auto; top: -8px;
+    border-top: none;
+    border-bottom: 8px solid var(--bg-elev-2);
+  }
+  .ach-toast.anchored.below:not(.locked)::after { border-bottom-color: var(--accent, #3b82f6); }
 
   /* Subscribed/active badge on the Pro tile */
   .sku-badge-active {
@@ -1171,7 +1201,7 @@ const I18N = {
     'sku.pro_yearly.title':'Slovo Pro · 1 year','sku.pro_yearly.desc':'Everything in Pro. 30% off vs monthly.',
     'sku.gift_pro.title':'Gift Pro · 1 month','sku.gift_pro.desc':'Send a month of Pro to a friend.',
     'onb.welcome':'Welcome to Slovo!','onb.howto':'Guess the 5-letter word in 6 tries.','onb.green':'Green: right letter, right spot','onb.yellow':'Yellow: right letter, wrong spot','onb.gray':'Gray: not in the word','onb.lets_play':"Let's play",
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
     'theme.default':'Dark','theme.light':'Light','theme.neon':'Neon','theme.sunset':'Sunset','theme.forest':'Forest','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Holiday',
     'err.network':'Network error. Try again.','err.try_again':'Try again',
   },
@@ -1199,7 +1229,7 @@ const I18N = {
     'sku.pro_yearly.title':'Slovo Pro · год','sku.pro_yearly.desc':'Всё из Pro. Скидка 30%.',
     'sku.gift_pro.title':'Подарок Pro · 1 месяц','sku.gift_pro.desc':'Подари другу месяц Pro.',
     'onb.welcome':'Добро пожаловать в Slovo!','onb.howto':'Угадайте слово из 5 букв за 6 попыток.','onb.green':'Зелёный: буква на своём месте','onb.yellow':'Жёлтый: буква есть, но не там','onb.gray':'Серый: буквы нет в слове','onb.lets_play':'Поехали',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
     'share.invite':'🧠 Зацени мой результат в Slovo! Сыграй сам:',
     'theme.default':'Тёмная','theme.light':'Светлая','theme.neon':'Неон','theme.sunset':'Закат','theme.forest':'Лес','theme.mono':'Моно','theme.pastel':'Пастель','theme.holiday':'Праздник',
     'err.network':'Ошибка сети. Попробуйте снова.','err.try_again':'Повторить',
@@ -1221,7 +1251,7 @@ const I18N = {
     'sku.pro_yearly.title':'Slovo Pro · рік','sku.pro_yearly.desc':'Усе з Pro. Знижка 30%.',
     'sku.gift_pro.title':'Подарунок Pro · 1 місяць','sku.gift_pro.desc':'Подаруй другу місяць Pro.',
     'onb.welcome':'Ласкаво просимо до Slovo!','onb.howto':'Вгадайте слово з 5 літер за 6 спроб.','onb.green':'Зелений: літера на своєму місці','onb.yellow':'Жовтий: літера є, але не там','onb.gray':'Сірий: літери немає у слові','onb.lets_play':'Поїхали',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
     'share.invite':'🧠 Глянь мій результат у Slovo! Зіграй сам:',
     'theme.default':'Темна','theme.light':'Світла','theme.neon':'Неон','theme.sunset':'Захід','theme.forest':'Ліс','theme.mono':'Моно','theme.pastel':'Пастель','theme.holiday':'Свято',
     'err.network':'Помилка мережі. Спробуйте знову.','err.try_again':'Повторити',
@@ -1236,7 +1266,7 @@ const I18N = {
     'settings.title':'Ajustes','settings.language':'Idioma','settings.theme':'Tema','settings.notifications':'Recordatorio diario','settings.notif_hour':'Hora del recordatorio','settings.share_app':'Compartir Slovo','settings.howto':'Cómo jugar',
     'shop.title':'⭐ Tienda','shop.purchase':'Comprar','shop.owned':'Adquirido','shop.pro_active':'Pro activo',
     'onb.welcome':'¡Bienvenido a Slovo!','onb.howto':'Adivina la palabra de 5 letras en 6 intentos.','onb.green':'Verde: letra correcta, lugar correcto','onb.yellow':'Amarillo: letra correcta, lugar incorrecto','onb.gray':'Gris: letra no está en la palabra','onb.lets_play':'A jugar',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
     'share.invite':'🧠 ¡Mira mi resultado en Slovo! Juega tú también:',
     'theme.default':'Oscuro','theme.light':'Claro','theme.neon':'Neón','theme.sunset':'Atardecer','theme.forest':'Bosque','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Fiesta',
   },
@@ -1250,7 +1280,7 @@ const I18N = {
     'settings.title':'Definições','settings.language':'Idioma','settings.theme':'Tema','settings.notifications':'Lembrete diário','settings.notif_hour':'Hora do lembrete','settings.share_app':'Partilhar Slovo','settings.howto':'Como jogar',
     'shop.title':'⭐ Loja','shop.purchase':'Comprar','shop.owned':'Adquirido','shop.pro_active':'Pro ativo',
     'onb.welcome':'Bem-vindo ao Slovo!','onb.howto':'Adivinha a palavra de 5 letras em 6 tentativas.','onb.green':'Verde: letra certa, lugar certo','onb.yellow':'Amarelo: letra certa, lugar errado','onb.gray':'Cinzento: letra não está na palavra','onb.lets_play':'Vamos jogar',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
     'share.invite':'🧠 Olha o meu resultado no Slovo! Joga também:',
     'theme.default':'Escuro','theme.light':'Claro','theme.neon':'Neon','theme.sunset':'Pôr-do-sol','theme.forest':'Floresta','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Festa',
   },
@@ -1264,7 +1294,7 @@ const I18N = {
     'settings.title':'Paramètres','settings.language':'Langue','settings.theme':'Thème','settings.notifications':'Rappel quotidien','settings.notif_hour':'Heure du rappel','settings.share_app':'Partager Slovo','settings.howto':'Comment jouer',
     'shop.title':'⭐ Boutique','shop.purchase':'Acheter','shop.owned':'Acquis','shop.pro_active':'Pro actif',
     'onb.welcome':'Bienvenue dans Slovo !','onb.howto':'Devinez le mot de 5 lettres en 6 essais.','onb.green':'Vert : bonne lettre, bonne place','onb.yellow':'Jaune : bonne lettre, mauvaise place','onb.gray':'Gris : lettre absente du mot','onb.lets_play':'Jouer',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
     'share.invite':'🧠 Regarde mon score à Slovo ! Viens jouer :',
     'theme.default':'Sombre','theme.light':'Clair','theme.neon':'Néon','theme.sunset':'Crépuscule','theme.forest':'Forêt','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Fête',
   },
@@ -1278,7 +1308,7 @@ const I18N = {
     'settings.title':'Einstellungen','settings.language':'Sprache','settings.theme':'Design','settings.notifications':'Tägliche Erinnerung','settings.notif_hour':'Erinnerungszeit','settings.share_app':'Slovo teilen','settings.howto':'Spielanleitung',
     'shop.title':'⭐ Shop','shop.purchase':'Kaufen','shop.owned':'Erworben','shop.pro_active':'Pro aktiv',
     'onb.welcome':'Willkommen bei Slovo!','onb.howto':'Errate das 5-Buchstaben-Wort in 6 Versuchen.','onb.green':'Grün: richtig + richtige Position','onb.yellow':'Gelb: richtig, falsche Position','onb.gray':'Grau: Buchstabe nicht im Wort','onb.lets_play':'Los geht\'s',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
     'share.invite':'🧠 Schau dir mein Slovo-Ergebnis an! Spiel mit:',
     'theme.default':'Dunkel','theme.light':'Hell','theme.neon':'Neon','theme.sunset':'Sonnenuntergang','theme.forest':'Wald','theme.mono':'Mono','theme.pastel':'Pastell','theme.holiday':'Feiertag',
   },
@@ -1292,7 +1322,7 @@ const I18N = {
     'settings.title':'Impostazioni','settings.language':'Lingua','settings.theme':'Tema','settings.notifications':'Promemoria quotidiano','settings.notif_hour':'Orario promemoria','settings.share_app':'Condividi Slovo','settings.howto':'Come si gioca',
     'shop.title':'⭐ Negozio','shop.purchase':'Acquista','shop.owned':'Acquistato','shop.pro_active':'Pro attivo',
     'onb.welcome':'Benvenuto in Slovo!','onb.howto':'Indovina la parola di 5 lettere in 6 tentativi.','onb.green':'Verde: lettera giusta, posto giusto','onb.yellow':'Giallo: lettera giusta, posto sbagliato','onb.gray':'Grigio: lettera assente','onb.lets_play':'Si gioca',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
     'share.invite':'🧠 Guarda il mio punteggio su Slovo! Gioca anche tu:',
     'theme.default':'Scuro','theme.light':'Chiaro','theme.neon':'Neon','theme.sunset':'Tramonto','theme.forest':'Foresta','theme.mono':'Mono','theme.pastel':'Pastello','theme.holiday':'Festa',
   },
@@ -1306,7 +1336,7 @@ const I18N = {
     'settings.title':'Instellingen','settings.language':'Taal','settings.theme':'Thema','settings.notifications':'Dagelijkse herinnering','settings.notif_hour':'Herinneringstijd','settings.share_app':'Slovo delen','settings.howto':'Hoe te spelen',
     'shop.title':'⭐ Winkel','shop.purchase':'Kopen','shop.owned':'Gekocht','shop.pro_active':'Pro actief',
     'onb.welcome':'Welkom bij Slovo!','onb.howto':'Raad het 5-letterwoord in 6 pogingen.','onb.green':'Groen: juiste letter, juiste plek','onb.yellow':'Geel: juiste letter, verkeerde plek','onb.gray':'Grijs: letter niet in woord','onb.lets_play':'Spelen',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
     'share.invite':'🧠 Bekijk mijn Slovo-score! Speel mee:',
     'theme.default':'Donker','theme.light':'Licht','theme.neon':'Neon','theme.sunset':'Zonsondergang','theme.forest':'Bos','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Feest',
   },
@@ -1320,7 +1350,7 @@ const I18N = {
     'settings.title':'Inställningar','settings.language':'Språk','settings.theme':'Tema','settings.notifications':'Daglig påminnelse','settings.notif_hour':'Påminnelsetid','settings.share_app':'Dela Slovo','settings.howto':'Hur man spelar',
     'shop.title':'⭐ Butik','shop.purchase':'Köp','shop.owned':'Köpt','shop.pro_active':'Pro aktiv',
     'onb.welcome':'Välkommen till Slovo!','onb.howto':'Gissa 5-bokstavsordet på 6 försök.','onb.green':'Grön: rätt bokstav, rätt plats','onb.yellow':'Gul: rätt bokstav, fel plats','onb.gray':'Grå: bokstaven finns inte','onb.lets_play':'Spela',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
     'share.invite':'🧠 Kolla mitt Slovo-resultat! Spela själv:',
     'theme.default':'Mörk','theme.light':'Ljus','theme.neon':'Neon','theme.sunset':'Solnedgång','theme.forest':'Skog','theme.mono':'Mono','theme.pastel':'Pastell','theme.holiday':'Helg',
   },
@@ -1334,7 +1364,7 @@ const I18N = {
     'settings.title':'Ustawienia','settings.language':'Język','settings.theme':'Motyw','settings.notifications':'Codzienne przypomnienie','settings.notif_hour':'Godzina przypomnienia','settings.share_app':'Udostępnij Slovo','settings.howto':'Jak grać',
     'shop.title':'⭐ Sklep','shop.purchase':'Kup','shop.owned':'Kupiono','shop.pro_active':'Pro aktywne',
     'onb.welcome':'Witaj w Slovo!','onb.howto':'Zgadnij 5-literowe słowo w 6 próbach.','onb.green':'Zielony: litera + miejsce','onb.yellow':'Żółty: litera, złe miejsce','onb.gray':'Szary: brak litery','onb.lets_play':'Gramy',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
     'share.invite':'🧠 Zobacz mój wynik w Slovo! Zagraj sam:',
     'theme.default':'Ciemny','theme.light':'Jasny','theme.neon':'Neon','theme.sunset':'Zachód','theme.forest':'Las','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Święto',
   },
@@ -1348,7 +1378,7 @@ const I18N = {
     'settings.title':'Ayarlar','settings.language':'Dil','settings.theme':'Tema','settings.notifications':'Günlük hatırlatma','settings.notif_hour':'Hatırlatma saati','settings.share_app':'Slovo\'yu paylaş','settings.howto':'Nasıl oynanır',
     'shop.title':'⭐ Mağaza','shop.purchase':'Satın al','shop.owned':'Sahip','shop.pro_active':'Pro aktif',
     'onb.welcome':'Slovo\'ya hoş geldin!','onb.howto':'5 harfli kelimeyi 6 denemede bul.','onb.green':'Yeşil: doğru harf, doğru yer','onb.yellow':'Sarı: doğru harf, yanlış yer','onb.gray':'Gri: harf yok','onb.lets_play':'Hadi başla',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
     'share.invite':'🧠 Slovo skorumu gör! Sen de oyna:',
     'theme.default':'Koyu','theme.light':'Açık','theme.neon':'Neon','theme.sunset':'Günbatımı','theme.forest':'Orman','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Tatil',
   },
@@ -1360,7 +1390,7 @@ const I18N = {
     'settings.title':'الإعدادات','settings.language':'اللغة','settings.theme':'الموضوع','settings.notifications':'تذكير يومي',
     'shop.title':'⭐ المتجر','shop.purchase':'شراء','shop.owned':'مملوك',
     'onb.welcome':'أهلاً بك في Slovo!','onb.howto':'احزر كلمة من ٥ حروف في ٦ محاولات.','onb.green':'أخضر: حرف صحيح ومكانه صحيح','onb.yellow':'أصفر: حرف صحيح، مكان خطأ','onb.gray':'رمادي: الحرف غير موجود','onb.lets_play':'لنلعب',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
   },
   he: {
     'common.close':'סגור','common.cancel':'בטל','common.share':'שתף','common.copied':'הועתק!','common.loading':'טוען…','common.ok':'אישור',
@@ -1370,7 +1400,7 @@ const I18N = {
     'settings.title':'הגדרות','settings.language':'שפה','settings.theme':'ערכת נושא','settings.notifications':'תזכורת יומית',
     'shop.title':'⭐ חנות','shop.purchase':'קנה','shop.owned':'נרכש',
     'onb.welcome':'ברוך הבא ל-Slovo!','onb.howto':'נחש מילה בת 5 אותיות ב-6 ניסיונות.','onb.green':'ירוק: אות נכונה במקום הנכון','onb.yellow':'צהוב: אות נכונה, מקום שגוי','onb.gray':'אפור: האות לא במילה','onb.lets_play':'משחקים',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
   },
   hi: {
     'common.close':'बंद करें','common.cancel':'रद्द','common.share':'शेयर','common.copied':'कॉपी हो गया!','common.loading':'लोड हो रहा है…','common.ok':'ठीक',
@@ -1380,7 +1410,7 @@ const I18N = {
     'settings.title':'सेटिंग्स','settings.language':'भाषा','settings.theme':'थीम','settings.notifications':'दैनिक रिमाइंडर',
     'shop.title':'⭐ दुकान','shop.purchase':'खरीदें','shop.owned':'खरीदा गया',
     'onb.welcome':'Slovo में आपका स्वागत है!','onb.howto':'6 कोशिशों में 5 अक्षरों का शब्द पहचानें।','onb.green':'हरा: सही अक्षर, सही जगह','onb.yellow':'पीला: सही अक्षर, गलत जगह','onb.gray':'ग्रे: अक्षर शब्द में नहीं','onb.lets_play':'चलो खेलें',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
   },
   id: {
     'common.close':'Tutup','common.cancel':'Batal','common.share':'Bagikan','common.copied':'Disalin!','common.loading':'Memuat…','common.ok':'OK',
@@ -1390,7 +1420,7 @@ const I18N = {
     'settings.title':'Pengaturan','settings.language':'Bahasa','settings.theme':'Tema','settings.notifications':'Pengingat harian',
     'shop.title':'⭐ Toko','shop.purchase':'Beli','shop.owned':'Dimiliki',
     'onb.welcome':'Selamat datang di Slovo!','onb.howto':'Tebak kata 5 huruf dalam 6 percobaan.','onb.green':'Hijau: huruf benar, posisi benar','onb.yellow':'Kuning: huruf benar, posisi salah','onb.gray':'Abu-abu: huruf tidak ada','onb.lets_play':'Ayo main',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
   },
   vi: {
     'common.close':'Đóng','common.cancel':'Hủy','common.share':'Chia sẻ','common.copied':'Đã sao chép!','common.loading':'Đang tải…','common.ok':'OK',
@@ -1400,7 +1430,7 @@ const I18N = {
     'settings.title':'Cài đặt','settings.language':'Ngôn ngữ','settings.theme':'Chủ đề','settings.notifications':'Nhắc nhở hàng ngày',
     'shop.title':'⭐ Cửa hàng','shop.purchase':'Mua','shop.owned':'Đã mua',
     'onb.welcome':'Chào mừng đến với Slovo!','onb.howto':'Đoán từ 5 chữ trong 6 lượt.','onb.green':'Xanh: đúng chữ, đúng vị trí','onb.yellow':'Vàng: đúng chữ, sai vị trí','onb.gray':'Xám: không có trong từ','onb.lets_play':'Chơi nào',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
   },
   zh: {
     'common.close':'关闭','common.cancel':'取消','common.share':'分享','common.copied':'已复制!','common.loading':'加载中…','common.ok':'确定',
@@ -1410,7 +1440,7 @@ const I18N = {
     'settings.title':'设置','settings.language':'语言','settings.theme':'主题','settings.notifications':'每日提醒',
     'shop.title':'⭐ 商店','shop.purchase':'购买','shop.owned':'已拥有',
     'onb.welcome':'欢迎来到 Slovo!','onb.howto':'6 次内猜出 5 字母单词。','onb.green':'绿色：字母位置正确','onb.yellow':'黄色：字母存在但位置错误','onb.gray':'灰色：字母不在词中','onb.lets_play':'开始游戏',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
   },
   ko: {
     'common.close':'닫기','common.cancel':'취소','common.share':'공유','common.copied':'복사됨!','common.loading':'로딩 중…','common.ok':'확인',
@@ -1420,7 +1450,7 @@ const I18N = {
     'settings.title':'설정','settings.language':'언어','settings.theme':'테마','settings.notifications':'매일 알림',
     'shop.title':'⭐ 상점','shop.purchase':'구매','shop.owned':'보유',
     'onb.welcome':'Slovo에 오신 것을 환영합니다!','onb.howto':'6번 안에 5글자 단어를 맞춰보세요.','onb.green':'녹색: 위치도 맞음','onb.yellow':'노란색: 글자는 맞으나 위치는 틀림','onb.gray':'회색: 단어에 없음','onb.lets_play':'시작',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
   },
   ja: {
     'common.close':'閉じる','common.cancel':'キャンセル','common.share':'シェア','common.copied':'コピー済み!','common.loading':'読み込み中…','common.ok':'OK',
@@ -1430,7 +1460,7 @@ const I18N = {
     'settings.title':'設定','settings.language':'言語','settings.theme':'テーマ','settings.notifications':'毎日のリマインド',
     'shop.title':'⭐ ショップ','shop.purchase':'購入','shop.owned':'購入済み',
     'onb.welcome':'Slovoへようこそ!','onb.howto':'6回以内に5文字の単語を当てよう。','onb.green':'緑：文字も位置も正解','onb.yellow':'黄：文字は正解、位置は違う','onb.gray':'灰：その文字はない','onb.lets_play':'始める',
-    'share.text':'Slovo {day} {result}/6',
+    'share.text':'Slovo {result}/6',
   },
 };
 
@@ -2012,7 +2042,7 @@ function renderAchievements() {
     cell.title = a.desc + (unlocked.has(a.id) ? '' : ' — locked');
     cell.addEventListener('click', () => {
       const have = unlocked.has(a.id);
-      showAchievementCard(a, have);
+      showAchievementCard(a, have, cell);  // anchor the tooltip to this cell
       haptic('sel');
     });
     grid.appendChild(cell);
@@ -2029,9 +2059,10 @@ function showAchievementUnlocks(ids) {
   __achQueue.push(...ids.map(id => ({ id, unlocked: true })));
   if (!__achPlaying) playNextAchCard();
 }
-function showAchievementCard(a, unlocked) {
-  // Tap-to-learn — immediate, jumps any unlock queue so the tapped item
-  // is what the user sees. Auto-dismisses after 3.2s.
+function showAchievementCard(a, unlocked, anchorEl) {
+  // Tap-to-learn. When anchorEl is provided, position the card ABOVE the
+  // tapped achievement cell with an arrow pointing down at it. Falls back
+  // to the centered top position when no anchor (e.g. programmatic display).
   if (__achHideTimer) clearTimeout(__achHideTimer);
   const el = document.getElementById('achToast');
   el.classList.toggle('locked', !unlocked);
@@ -2039,8 +2070,35 @@ function showAchievementCard(a, unlocked) {
   document.getElementById('achToastLabel').textContent = unlocked ? t('ach.unlocked') : t('ach.how_to_unlock');
   document.getElementById('achToastTitle').textContent = a.title;
   document.getElementById('achToastDesc').textContent  = a.desc;
-  el.classList.add('show');
-  __achHideTimer = setTimeout(() => { el.classList.remove('show'); }, 3200);
+  // Reset any prior anchoring
+  el.classList.remove('anchored', 'below');
+  el.style.removeProperty('top');
+  el.style.removeProperty('left');
+  if (anchorEl) {
+    el.classList.add('anchored');
+    el.classList.add('show');
+    // Position on next frame so we can measure the rendered card
+    requestAnimationFrame(() => {
+      const rect    = anchorEl.getBoundingClientRect();
+      const popRect = el.getBoundingClientRect();
+      const gap     = 12;
+      let top  = rect.top - popRect.height - gap;
+      let flipBelow = false;
+      // If would clip above the viewport, flip below the anchor
+      if (top < 8) { top = rect.bottom + gap; flipBelow = true; }
+      el.classList.toggle('below', flipBelow);
+      // Horizontal: center on the cell, clamp to viewport
+      let left = rect.left + rect.width / 2 - popRect.width / 2;
+      left = Math.max(8, Math.min(left, window.innerWidth - popRect.width - 8));
+      el.style.top  = top  + 'px';
+      el.style.left = left + 'px';
+    });
+  } else {
+    el.classList.add('show');
+  }
+  __achHideTimer = setTimeout(() => {
+    el.classList.remove('show'); el.classList.remove('anchored'); el.classList.remove('below');
+  }, 3200);
 }
 function playNextAchCard() {
   if (!__achQueue.length) { __achPlaying = false; return; }
@@ -2129,7 +2187,7 @@ function buildShareGrid(includeHeader) {
   const lines = [];
   if (includeHeader) {
     const result = state.result === 'won' ? state.guesses.length : 'X';
-    lines.push(t('share.text', { day: state.dayIdx, result }));
+    lines.push(t('share.text', { result }));
     lines.push('');
   }
   for (const p of state.patterns) {
@@ -2160,13 +2218,12 @@ async function shareResult() {
   const botUser = (state.flags && state.flags.bot_username) || 'SlovoPuzzleBot';
   const myId    = TG && TG.initDataUnsafe && TG.initDataUnsafe.user && TG.initDataUnsafe.user.id;
   const playUrl = `https://t.me/${botUser}/play${myId ? '?startapp=ref_' + myId : ''}`;
-  // Localized invite prefix + the iconic share grid. Telegram's share
-  // dialog renders text + url separately; the URL becomes a tappable
-  // link below the message, but we ALSO embed it in the text so it
-  // survives copy-paste into non-Telegram apps.
+  // Telegram share renders the URL as a link preview card (from url= param)
+  // — do NOT also embed it in text= or it appears twice. The text is just
+  // the localized invite + 'Slovo N/6' line + emoji grid.
   const invite = t('share.invite');
   const grid   = buildShareGrid(true);
-  const text   = `${invite}\n\n${grid}\n\n${playUrl}`;
+  const text   = `${invite}\n\n${grid}`;
   const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(playUrl)}&text=${encodeURIComponent(text)}`;
   if (TG && TG.openTelegramLink) {
     try { TG.openTelegramLink(shareUrl); return; } catch (_) {}
@@ -2174,13 +2231,15 @@ async function shareResult() {
   if (TG && TG.openLink) {
     try { TG.openLink(shareUrl); return; } catch (_) {}
   }
-  // Non-TG fallback: clipboard (text already contains the URL)
+  // Non-TG fallback: clipboard (in a non-TG context there's no link preview,
+  // so append the URL so the recipient can tap it).
+  const copyText = text + '\n\n' + playUrl;
   try {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(copyText);
     toast(t('common.copied'));
   } catch (_) {
     const ta = document.createElement('textarea');
-    ta.value = text;
+    ta.value = copyText;
     document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
     toast(t('common.copied'));
   }
