@@ -216,6 +216,13 @@
   .ach-toast .ach-toast-body { display: flex; flex-direction: column; }
   .ach-toast .ach-toast-label { font-size: 11px; font-weight: 700; opacity: 0.85; text-transform: uppercase; letter-spacing: 1px; }
   .ach-toast .ach-toast-title { font-size: 16px; font-weight: 800; }
+  .ach-toast .ach-toast-desc  { font-size: 13px; opacity: 0.92; margin-top: 2px; line-height: 1.25; }
+  .ach-toast.locked {
+    background: linear-gradient(180deg, var(--bg-elev), var(--bg-elev-2));
+    color: var(--text);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 1.5px var(--border);
+  }
+  .ach-toast.locked .ach-toast-label { color: var(--text-dim); }
 
   /* Subscribed/active badge on the Pro tile */
   .sku-badge-active {
@@ -434,8 +441,15 @@
   .modal-bg {
     position: fixed; inset: 0;
     background: rgba(0,0,0,0.55);
-    display: none; align-items: center; justify-content: center;
-    z-index: 200; padding: 16px;
+    display: none; align-items: flex-start; justify-content: center;
+    z-index: 200;
+    /* Inset by the same safe-area used for the app so modals never slide
+       under the Telegram Close / menu pills at the top. The 90px floor
+       matches the JS fallback for iOS TG chrome. */
+    padding-top: max(90px, var(--safe-top, 0px));
+    padding-bottom: max(16px, var(--safe-bot, 0px));
+    padding-left: 16px; padding-right: 16px;
+    overflow-y: auto;
     animation: fadeIn 180ms;
   }
   .modal-bg.show { display: flex; }
@@ -443,7 +457,9 @@
   .modal {
     background: var(--bg-elev); color: var(--text);
     border-radius: 14px; padding: 20px;
-    width: 100%; max-width: 380px; max-height: 90vh; overflow-y: auto;
+    width: 100%; max-width: 380px;
+    max-height: calc(100dvh - max(90px, var(--safe-top, 0px)) - max(16px, var(--safe-bot, 0px)) - 32px);
+    overflow-y: auto;
     position: relative;
     animation: slideUp 240ms cubic-bezier(.2,.7,.3,1);
   }
@@ -770,8 +786,9 @@
 <div class="ach-toast" id="achToast">
   <div class="ach-toast-icon" id="achToastIcon">🎯</div>
   <div class="ach-toast-body">
-    <div class="ach-toast-label" data-i18n="ach.unlocked">Achievement unlocked</div>
+    <div class="ach-toast-label" id="achToastLabel">Achievement unlocked</div>
     <div class="ach-toast-title" id="achToastTitle">First Word</div>
+    <div class="ach-toast-desc"  id="achToastDesc">Win your first puzzle</div>
   </div>
 </div>
 
@@ -1135,7 +1152,7 @@ const I18N = {
     'game.next_in':'Next puzzle in','game.hint_used':'Letter revealed','game.no_hints':'No hints left',
     'home.play_today':"Play Today's Word",
     'stats.title':'Statistics','stats.played':'Played','stats.win_rate':'Win %','stats.current_streak':'Streak','stats.max_streak':'Max Streak','stats.guess_distribution':'Guess Distribution','stats.achievements':'Achievements',
-    'ach.unlocked':'Achievement unlocked','ach.streak_reward':'Streak reward','ach.subscribed':'Subscribed','ach.pro_active':'Pro active',
+    'ach.unlocked':'Achievement unlocked','ach.how_to_unlock':'How to unlock','ach.streak_reward':'Streak reward','ach.subscribed':'Subscribed','ach.pro_active':'Pro active',
     'settings.title':'Settings','settings.language':'Language','settings.theme':'Theme','settings.sound':'Sound effects','settings.notifications':'Daily reminder','settings.notif_hour':'Notification time','settings.share_app':'Share Slovo','settings.howto':'How to play',
     'shop.title':'⭐ Shop','shop.purchase':'Buy','shop.owned':'Owned','shop.pro_active':'Pro active','shop.thank_you':'Thanks for supporting Slovo!',
     'sku.hint_pack.title':'Hint Pack · 5 Hints','sku.hint_pack.desc':'Reveal a random letter when stuck.',
@@ -1162,7 +1179,7 @@ const I18N = {
     'game.next_in':'Следующее через','game.hint_used':'Буква открыта','game.no_hints':'Подсказок нет',
     'home.play_today':'Сегодняшнее слово',
     'stats.title':'Статистика','stats.played':'Сыграно','stats.win_rate':'% побед','stats.current_streak':'Серия','stats.max_streak':'Максимум','stats.guess_distribution':'Распределение попыток','stats.achievements':'Достижения',
-    'ach.unlocked':'Достижение получено','ach.streak_reward':'Награда за серию','ach.subscribed':'Подписка','ach.pro_active':'Pro активен',
+    'ach.unlocked':'Достижение получено','ach.how_to_unlock':'Как получить','ach.streak_reward':'Награда за серию','ach.subscribed':'Подписка','ach.pro_active':'Pro активен',
     'settings.title':'Настройки','settings.language':'Язык','settings.theme':'Тема','settings.sound':'Звук','settings.notifications':'Ежедневное напоминание','settings.notif_hour':'Время напоминания','settings.share_app':'Поделиться Slovo','settings.howto':'Как играть',
     'shop.title':'⭐ Магазин','shop.purchase':'Купить','shop.owned':'Куплено','shop.pro_active':'Pro активен','shop.thank_you':'Спасибо за поддержку Slovo!',
     'sku.hint_pack.title':'Подсказки · 5 шт','sku.hint_pack.desc':'Открой случайную букву.',
@@ -1174,6 +1191,7 @@ const I18N = {
     'sku.gift_pro.title':'Подарок Pro · 1 месяц','sku.gift_pro.desc':'Подари другу месяц Pro.',
     'onb.welcome':'Добро пожаловать в Slovo!','onb.howto':'Угадайте слово из 5 букв за 6 попыток.','onb.green':'Зелёный: буква на своём месте','onb.yellow':'Жёлтый: буква есть, но не там','onb.gray':'Серый: буквы нет в слове','onb.lets_play':'Поехали',
     'share.text':'Slovo {day} {result}/6',
+    'share.invite':'🧠 Зацени мой результат в Slovo! Сыграй сам:',
     'theme.default':'Тёмная','theme.light':'Светлая','theme.neon':'Неон','theme.sunset':'Закат','theme.forest':'Лес','theme.mono':'Моно','theme.pastel':'Пастель','theme.holiday':'Праздник',
     'err.network':'Ошибка сети. Попробуйте снова.','err.try_again':'Повторить',
   },
@@ -1195,6 +1213,7 @@ const I18N = {
     'sku.gift_pro.title':'Подарунок Pro · 1 місяць','sku.gift_pro.desc':'Подаруй другу місяць Pro.',
     'onb.welcome':'Ласкаво просимо до Slovo!','onb.howto':'Вгадайте слово з 5 літер за 6 спроб.','onb.green':'Зелений: літера на своєму місці','onb.yellow':'Жовтий: літера є, але не там','onb.gray':'Сірий: літери немає у слові','onb.lets_play':'Поїхали',
     'share.text':'Slovo {day} {result}/6',
+    'share.invite':'🧠 Глянь мій результат у Slovo! Зіграй сам:',
     'theme.default':'Темна','theme.light':'Світла','theme.neon':'Неон','theme.sunset':'Захід','theme.forest':'Ліс','theme.mono':'Моно','theme.pastel':'Пастель','theme.holiday':'Свято',
     'err.network':'Помилка мережі. Спробуйте знову.','err.try_again':'Повторити',
   },
@@ -1209,6 +1228,7 @@ const I18N = {
     'shop.title':'⭐ Tienda','shop.purchase':'Comprar','shop.owned':'Adquirido','shop.pro_active':'Pro activo',
     'onb.welcome':'¡Bienvenido a Slovo!','onb.howto':'Adivina la palabra de 5 letras en 6 intentos.','onb.green':'Verde: letra correcta, lugar correcto','onb.yellow':'Amarillo: letra correcta, lugar incorrecto','onb.gray':'Gris: letra no está en la palabra','onb.lets_play':'A jugar',
     'share.text':'Slovo {day} {result}/6',
+    'share.invite':'🧠 ¡Mira mi resultado en Slovo! Juega tú también:',
     'theme.default':'Oscuro','theme.light':'Claro','theme.neon':'Neón','theme.sunset':'Atardecer','theme.forest':'Bosque','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Fiesta',
   },
   pt: {
@@ -1222,6 +1242,7 @@ const I18N = {
     'shop.title':'⭐ Loja','shop.purchase':'Comprar','shop.owned':'Adquirido','shop.pro_active':'Pro ativo',
     'onb.welcome':'Bem-vindo ao Slovo!','onb.howto':'Adivinha a palavra de 5 letras em 6 tentativas.','onb.green':'Verde: letra certa, lugar certo','onb.yellow':'Amarelo: letra certa, lugar errado','onb.gray':'Cinzento: letra não está na palavra','onb.lets_play':'Vamos jogar',
     'share.text':'Slovo {day} {result}/6',
+    'share.invite':'🧠 Olha o meu resultado no Slovo! Joga também:',
     'theme.default':'Escuro','theme.light':'Claro','theme.neon':'Neon','theme.sunset':'Pôr-do-sol','theme.forest':'Floresta','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Festa',
   },
   fr: {
@@ -1235,6 +1256,7 @@ const I18N = {
     'shop.title':'⭐ Boutique','shop.purchase':'Acheter','shop.owned':'Acquis','shop.pro_active':'Pro actif',
     'onb.welcome':'Bienvenue dans Slovo !','onb.howto':'Devinez le mot de 5 lettres en 6 essais.','onb.green':'Vert : bonne lettre, bonne place','onb.yellow':'Jaune : bonne lettre, mauvaise place','onb.gray':'Gris : lettre absente du mot','onb.lets_play':'Jouer',
     'share.text':'Slovo {day} {result}/6',
+    'share.invite':'🧠 Regarde mon score à Slovo ! Viens jouer :',
     'theme.default':'Sombre','theme.light':'Clair','theme.neon':'Néon','theme.sunset':'Crépuscule','theme.forest':'Forêt','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Fête',
   },
   de: {
@@ -1248,6 +1270,7 @@ const I18N = {
     'shop.title':'⭐ Shop','shop.purchase':'Kaufen','shop.owned':'Erworben','shop.pro_active':'Pro aktiv',
     'onb.welcome':'Willkommen bei Slovo!','onb.howto':'Errate das 5-Buchstaben-Wort in 6 Versuchen.','onb.green':'Grün: richtig + richtige Position','onb.yellow':'Gelb: richtig, falsche Position','onb.gray':'Grau: Buchstabe nicht im Wort','onb.lets_play':'Los geht\'s',
     'share.text':'Slovo {day} {result}/6',
+    'share.invite':'🧠 Schau dir mein Slovo-Ergebnis an! Spiel mit:',
     'theme.default':'Dunkel','theme.light':'Hell','theme.neon':'Neon','theme.sunset':'Sonnenuntergang','theme.forest':'Wald','theme.mono':'Mono','theme.pastel':'Pastell','theme.holiday':'Feiertag',
   },
   it: {
@@ -1261,6 +1284,7 @@ const I18N = {
     'shop.title':'⭐ Negozio','shop.purchase':'Acquista','shop.owned':'Acquistato','shop.pro_active':'Pro attivo',
     'onb.welcome':'Benvenuto in Slovo!','onb.howto':'Indovina la parola di 5 lettere in 6 tentativi.','onb.green':'Verde: lettera giusta, posto giusto','onb.yellow':'Giallo: lettera giusta, posto sbagliato','onb.gray':'Grigio: lettera assente','onb.lets_play':'Si gioca',
     'share.text':'Slovo {day} {result}/6',
+    'share.invite':'🧠 Guarda il mio punteggio su Slovo! Gioca anche tu:',
     'theme.default':'Scuro','theme.light':'Chiaro','theme.neon':'Neon','theme.sunset':'Tramonto','theme.forest':'Foresta','theme.mono':'Mono','theme.pastel':'Pastello','theme.holiday':'Festa',
   },
   nl: {
@@ -1274,6 +1298,7 @@ const I18N = {
     'shop.title':'⭐ Winkel','shop.purchase':'Kopen','shop.owned':'Gekocht','shop.pro_active':'Pro actief',
     'onb.welcome':'Welkom bij Slovo!','onb.howto':'Raad het 5-letterwoord in 6 pogingen.','onb.green':'Groen: juiste letter, juiste plek','onb.yellow':'Geel: juiste letter, verkeerde plek','onb.gray':'Grijs: letter niet in woord','onb.lets_play':'Spelen',
     'share.text':'Slovo {day} {result}/6',
+    'share.invite':'🧠 Bekijk mijn Slovo-score! Speel mee:',
     'theme.default':'Donker','theme.light':'Licht','theme.neon':'Neon','theme.sunset':'Zonsondergang','theme.forest':'Bos','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Feest',
   },
   sv: {
@@ -1287,6 +1312,7 @@ const I18N = {
     'shop.title':'⭐ Butik','shop.purchase':'Köp','shop.owned':'Köpt','shop.pro_active':'Pro aktiv',
     'onb.welcome':'Välkommen till Slovo!','onb.howto':'Gissa 5-bokstavsordet på 6 försök.','onb.green':'Grön: rätt bokstav, rätt plats','onb.yellow':'Gul: rätt bokstav, fel plats','onb.gray':'Grå: bokstaven finns inte','onb.lets_play':'Spela',
     'share.text':'Slovo {day} {result}/6',
+    'share.invite':'🧠 Kolla mitt Slovo-resultat! Spela själv:',
     'theme.default':'Mörk','theme.light':'Ljus','theme.neon':'Neon','theme.sunset':'Solnedgång','theme.forest':'Skog','theme.mono':'Mono','theme.pastel':'Pastell','theme.holiday':'Helg',
   },
   pl: {
@@ -1300,6 +1326,7 @@ const I18N = {
     'shop.title':'⭐ Sklep','shop.purchase':'Kup','shop.owned':'Kupiono','shop.pro_active':'Pro aktywne',
     'onb.welcome':'Witaj w Slovo!','onb.howto':'Zgadnij 5-literowe słowo w 6 próbach.','onb.green':'Zielony: litera + miejsce','onb.yellow':'Żółty: litera, złe miejsce','onb.gray':'Szary: brak litery','onb.lets_play':'Gramy',
     'share.text':'Slovo {day} {result}/6',
+    'share.invite':'🧠 Zobacz mój wynik w Slovo! Zagraj sam:',
     'theme.default':'Ciemny','theme.light':'Jasny','theme.neon':'Neon','theme.sunset':'Zachód','theme.forest':'Las','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Święto',
   },
   tr: {
@@ -1313,6 +1340,7 @@ const I18N = {
     'shop.title':'⭐ Mağaza','shop.purchase':'Satın al','shop.owned':'Sahip','shop.pro_active':'Pro aktif',
     'onb.welcome':'Slovo\'ya hoş geldin!','onb.howto':'5 harfli kelimeyi 6 denemede bul.','onb.green':'Yeşil: doğru harf, doğru yer','onb.yellow':'Sarı: doğru harf, yanlış yer','onb.gray':'Gri: harf yok','onb.lets_play':'Hadi başla',
     'share.text':'Slovo {day} {result}/6',
+    'share.invite':'🧠 Slovo skorumu gör! Sen de oyna:',
     'theme.default':'Koyu','theme.light':'Açık','theme.neon':'Neon','theme.sunset':'Günbatımı','theme.forest':'Orman','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Tatil',
   },
   ar: {
@@ -1970,35 +1998,70 @@ function renderAchievements() {
     cell.title = a.desc + (unlocked.has(a.id) ? '' : ' — locked');
     cell.addEventListener('click', () => {
       const have = unlocked.has(a.id);
-      toast((have ? '✅ ' : '🔒 ') + a.title + ' · ' + a.desc, have ? '' : 'error');
+      showAchievementCard(a, have);
       haptic('sel');
     });
     grid.appendChild(cell);
   }
 }
 
-// Pop the achievement-unlock celebration toast for one id, then queue the rest.
+// Pop a richer card for an achievement — used both for unlock celebrations
+// (auto-fired from server response) and for tap-to-learn on the Stats grid.
 let __achQueue = [];
 let __achPlaying = false;
+let __achHideTimer = null;
 function showAchievementUnlocks(ids) {
   if (!ids || !ids.length) return;
-  __achQueue.push(...ids);
-  if (!__achPlaying) playNextAchToast();
+  __achQueue.push(...ids.map(id => ({ id, unlocked: true })));
+  if (!__achPlaying) playNextAchCard();
 }
-function playNextAchToast() {
+function showAchievementCard(a, unlocked) {
+  // Tap-to-learn — immediate, jumps any unlock queue so the tapped item
+  // is what the user sees. Auto-dismisses after 3.2s.
+  if (__achHideTimer) clearTimeout(__achHideTimer);
+  const el = document.getElementById('achToast');
+  el.classList.toggle('locked', !unlocked);
+  document.getElementById('achToastIcon').textContent  = unlocked ? a.icon : '🔒';
+  document.getElementById('achToastLabel').textContent = unlocked ? t('ach.unlocked') : t('ach.how_to_unlock');
+  document.getElementById('achToastTitle').textContent = a.title;
+  document.getElementById('achToastDesc').textContent  = a.desc;
+  el.classList.add('show');
+  __achHideTimer = setTimeout(() => { el.classList.remove('show'); }, 3200);
+}
+function playNextAchCard() {
   if (!__achQueue.length) { __achPlaying = false; return; }
   __achPlaying = true;
-  const id = __achQueue.shift();
+  const { id } = __achQueue.shift();
   const a = (state.achievementsCatalog || []).find(x => x.id === id);
-  if (!a) { playNextAchToast(); return; }
+  if (!a) { playNextAchCard(); return; }
+  if (__achHideTimer) clearTimeout(__achHideTimer);
   const el = document.getElementById('achToast');
-  document.getElementById('achToastIcon').textContent = a.icon;
+  el.classList.remove('locked');
+  document.getElementById('achToastIcon').textContent  = a.icon;
+  document.getElementById('achToastLabel').textContent = t('ach.unlocked');
   document.getElementById('achToastTitle').textContent = a.title;
+  document.getElementById('achToastDesc').textContent  = a.desc;
   el.classList.add('show');
   haptic('win'); sndStreak();
   track('achievement_unlocked', { id: a.id });
-  setTimeout(() => { el.classList.remove('show'); setTimeout(playNextAchToast, 400); }, 2400);
+  __achHideTimer = setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(playNextAchCard, 400);
+  }, 2600);
 }
+
+// Tap the ach-toast card itself to dismiss early.
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('achToast');
+  if (el) {
+    el.style.pointerEvents = 'auto';
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', () => {
+      if (__achHideTimer) clearTimeout(__achHideTimer);
+      el.classList.remove('show');
+    });
+  }
+});
 
 // Streak rewards from the server come as [{at: streakN, type: 'hint'|'shield', value: N}]
 function showStreakRewards(rewards) {
@@ -2078,14 +2141,18 @@ function updateCountdown() {
 // ============ Share ============
 async function shareResult() {
   track('share_result', { day_idx: state.dayIdx, result: state.result, guesses_used: state.guesses.length });
-  const text = buildShareGrid(true);
   // Build the play link with a referral param so shared puzzles drive
   // signups attributed to this user.
   const botUser = (state.flags && state.flags.bot_username) || 'SlovoPuzzleBot';
   const myId    = TG && TG.initDataUnsafe && TG.initDataUnsafe.user && TG.initDataUnsafe.user.id;
   const playUrl = `https://t.me/${botUser}/play${myId ? '?startapp=ref_' + myId : ''}`;
-  // Native Telegram share sheet: pick chat → Telegram sends a formatted
-  // message containing the grid + a tappable play link.
+  // Localized invite prefix + the iconic share grid. Telegram's share
+  // dialog renders text + url separately; the URL becomes a tappable
+  // link below the message, but we ALSO embed it in the text so it
+  // survives copy-paste into non-Telegram apps.
+  const invite = t('share.invite');
+  const grid   = buildShareGrid(true);
+  const text   = `${invite}\n\n${grid}\n\n${playUrl}`;
   const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(playUrl)}&text=${encodeURIComponent(text)}`;
   if (TG && TG.openTelegramLink) {
     try { TG.openTelegramLink(shareUrl); return; } catch (_) {}
@@ -2093,13 +2160,13 @@ async function shareResult() {
   if (TG && TG.openLink) {
     try { TG.openLink(shareUrl); return; } catch (_) {}
   }
-  // Non-TG fallback: clipboard with grid + link
+  // Non-TG fallback: clipboard (text already contains the URL)
   try {
-    await navigator.clipboard.writeText(text + '\n\n' + playUrl);
+    await navigator.clipboard.writeText(text);
     toast(t('common.copied'));
   } catch (_) {
     const ta = document.createElement('textarea');
-    ta.value = text + '\n\n' + playUrl;
+    ta.value = text;
     document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
     toast(t('common.copied'));
   }
