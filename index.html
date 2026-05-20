@@ -178,6 +178,52 @@
   .mode-pill:active { transform: scale(0.94); }
   .mode-pill.active { background: var(--accent); color: #fff; }
 
+  /* Achievements grid (in Stats modal) */
+  .ach-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+    margin: 8px 0 4px;
+  }
+  .ach-cell {
+    background: var(--bg-elev-2); border-radius: 10px;
+    padding: 10px 4px; text-align: center;
+    border: 1px solid transparent;
+    transition: transform 80ms, border-color 200ms;
+    cursor: pointer;
+  }
+  .ach-cell:active { transform: scale(0.94); }
+  .ach-cell.unlocked { border-color: var(--accent); background: linear-gradient(180deg, var(--bg-elev-2), color-mix(in srgb, var(--accent) 12%, var(--bg-elev-2))); }
+  .ach-cell.locked   { opacity: 0.45; filter: grayscale(0.8); }
+  .ach-icon  { font-size: 26px; line-height: 1; }
+  .ach-title { font-size: 10px; font-weight: 700; margin-top: 4px; line-height: 1.15; }
+
+  /* Achievement unlock celebration toast — pops in from top, bigger than
+     the regular toast so it feels special. */
+  .ach-toast {
+    position: fixed; left: 50%; top: 80px; transform: translateX(-50%) translateY(-20px);
+    background: linear-gradient(180deg, var(--accent), var(--accent-hot, #2563eb));
+    color: #fff;
+    padding: 14px 20px;
+    border-radius: 14px;
+    z-index: 250; pointer-events: none;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1);
+    opacity: 0;
+    transition: opacity 240ms, transform 280ms cubic-bezier(.2,.7,.3,1);
+    max-width: 90vw;
+  }
+  .ach-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .ach-toast .ach-toast-icon { font-size: 36px; line-height: 1; }
+  .ach-toast .ach-toast-body { display: flex; flex-direction: column; }
+  .ach-toast .ach-toast-label { font-size: 11px; font-weight: 700; opacity: 0.85; text-transform: uppercase; letter-spacing: 1px; }
+  .ach-toast .ach-toast-title { font-size: 16px; font-weight: 800; }
+
+  /* Subscribed/active badge on the Pro tile */
+  .sku-badge-active {
+    display: inline-block; background: var(--green); color: #fff;
+    font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 6px;
+    margin-left: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
   /* Speed-mode HUD — timer + score chips, lives between mode-pills and grid */
   .speed-hud {
     display: flex; justify-content: center; gap: 8px; align-items: center;
@@ -721,6 +767,13 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="ach-toast" id="achToast">
+  <div class="ach-toast-icon" id="achToastIcon">🎯</div>
+  <div class="ach-toast-body">
+    <div class="ach-toast-label" data-i18n="ach.unlocked">Achievement unlocked</div>
+    <div class="ach-toast-title" id="achToastTitle">First Word</div>
+  </div>
+</div>
 
 <!-- Stats modal -->
 <div class="modal-bg" id="statsModal">
@@ -735,6 +788,8 @@
     </div>
     <h3 style="text-align:center;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);margin-top:18px;" data-i18n="stats.guess_distribution">Guess Distribution</h3>
     <div class="dist" id="distEl"></div>
+    <h3 style="text-align:center;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);margin-top:18px;" data-i18n="stats.achievements">Achievements</h3>
+    <div class="ach-grid" id="achGrid"></div>
     <div id="endGameSection" style="display:none;">
       <hr style="border:none;border-top:1px solid var(--border);margin:18px 0;">
       <div class="end-banner">
@@ -1079,7 +1134,8 @@ const I18N = {
     'game.you_won':'Brilliant!','game.you_lost':'Better luck tomorrow','game.answer_was':'The word was','game.share_result':'Share Result',
     'game.next_in':'Next puzzle in','game.hint_used':'Letter revealed','game.no_hints':'No hints left',
     'home.play_today':"Play Today's Word",
-    'stats.title':'Statistics','stats.played':'Played','stats.win_rate':'Win %','stats.current_streak':'Streak','stats.max_streak':'Max Streak','stats.guess_distribution':'Guess Distribution',
+    'stats.title':'Statistics','stats.played':'Played','stats.win_rate':'Win %','stats.current_streak':'Streak','stats.max_streak':'Max Streak','stats.guess_distribution':'Guess Distribution','stats.achievements':'Achievements',
+    'ach.unlocked':'Achievement unlocked','ach.streak_reward':'Streak reward','ach.subscribed':'Subscribed','ach.pro_active':'Pro active',
     'settings.title':'Settings','settings.language':'Language','settings.theme':'Theme','settings.sound':'Sound effects','settings.notifications':'Daily reminder','settings.notif_hour':'Notification time','settings.share_app':'Share Slovo','settings.howto':'How to play',
     'shop.title':'⭐ Shop','shop.purchase':'Buy','shop.owned':'Owned','shop.pro_active':'Pro active','shop.thank_you':'Thanks for supporting Slovo!',
     'sku.hint_pack.title':'Hint Pack · 5 Hints','sku.hint_pack.desc':'Reveal a random letter when stuck.',
@@ -1105,7 +1161,8 @@ const I18N = {
     'game.you_won':'Великолепно!','game.you_lost':'Завтра повезёт','game.answer_was':'Слово было','game.share_result':'Поделиться',
     'game.next_in':'Следующее через','game.hint_used':'Буква открыта','game.no_hints':'Подсказок нет',
     'home.play_today':'Сегодняшнее слово',
-    'stats.title':'Статистика','stats.played':'Сыграно','stats.win_rate':'% побед','stats.current_streak':'Серия','stats.max_streak':'Максимум','stats.guess_distribution':'Распределение попыток',
+    'stats.title':'Статистика','stats.played':'Сыграно','stats.win_rate':'% побед','stats.current_streak':'Серия','stats.max_streak':'Максимум','stats.guess_distribution':'Распределение попыток','stats.achievements':'Достижения',
+    'ach.unlocked':'Достижение получено','ach.streak_reward':'Награда за серию','ach.subscribed':'Подписка','ach.pro_active':'Pro активен',
     'settings.title':'Настройки','settings.language':'Язык','settings.theme':'Тема','settings.sound':'Звук','settings.notifications':'Ежедневное напоминание','settings.notif_hour':'Время напоминания','settings.share_app':'Поделиться Slovo','settings.howto':'Как играть',
     'shop.title':'⭐ Магазин','shop.purchase':'Купить','shop.owned':'Куплено','shop.pro_active':'Pro активен','shop.thank_you':'Спасибо за поддержку Slovo!',
     'sku.hint_pack.title':'Подсказки · 5 шт','sku.hint_pack.desc':'Открой случайную букву.',
@@ -1416,6 +1473,13 @@ const state = {
   me: null,
   skus: [],
   missions: [],
+  // Achievements catalog — loaded once from /api/achievements/catalog on boot
+  // so client labels stay in sync with the server's source of truth.
+  achievementsCatalog: [],
+  // Per-game flag: did we use a hint in the current daily puzzle? Cleared on
+  // new game / mode switch / next day. Sent to /api/guess so the server can
+  // decide whether to advance the no_hints_run counter on a win.
+  usedHintThisGame: false,
   boinkersStarted: (() => { try { return JSON.parse(localStorage.getItem('slovo.boinkersStarted') || '{}'); } catch (_) { return {}; } })(),
   _firstGuessTracked: false,
 };
@@ -1775,7 +1839,7 @@ async function submitGuess() {
     return;
   }
 
-  const r = await api('/api/guess', { lang: state.lang, dayIdx: state.dayIdx, guess });
+  const r = await api('/api/guess', { lang: state.lang, dayIdx: state.dayIdx, guess, usedHint: state.usedHintThisGame });
   state.busy = false;
   if (!r.ok) {
     if (r.body && r.body.code === 'not_a_word') {
@@ -1801,11 +1865,13 @@ async function submitGuess() {
     const prevStreak = (state.me && state.me.streak) || 0;
     await refreshMe();
     const newStreak = (state.me && state.me.streak) || 0;
-    // Streak milestones fire ONCE when crossing the threshold.
     for (const ms of [3, 7, 14, 30, 100, 365]) {
       if (newStreak >= ms && prevStreak < ms) { track('streak_milestone', { streak: newStreak, milestone: ms }); setTimeout(sndStreak, 800); }
     }
-    setTimeout(openStats, 1200);
+    // Stagger any streak-reward + achievement toasts so each one is readable
+    showStreakRewards(r.body.streakRewards);
+    showAchievementUnlocks(r.body.newlyUnlocked);
+    setTimeout(openStats, 1500);
   } else if (r.body.state === 'lost') {
     state.finished = true; state.result = 'lost'; state.answer = r.body.answer;
     haptic('lose');
@@ -1887,6 +1953,64 @@ document.querySelectorAll('.modal-bg').forEach(bg => {
 });
 
 // ============ Stats ============
+// ============ Achievements rendering ============
+function renderAchievements() {
+  const grid = document.getElementById('achGrid');
+  if (!grid) return;
+  const me = state.me || {};
+  const unlocked = new Set(me.achievements_unlocked || []);
+  grid.innerHTML = '';
+  for (const a of (state.achievementsCatalog || [])) {
+    const cell = document.createElement('div');
+    cell.className = 'ach-cell ' + (unlocked.has(a.id) ? 'unlocked' : 'locked');
+    cell.innerHTML = `
+      <div class="ach-icon">${unlocked.has(a.id) ? a.icon : '🔒'}</div>
+      <div class="ach-title">${a.title}</div>
+    `;
+    cell.title = a.desc + (unlocked.has(a.id) ? '' : ' — locked');
+    cell.addEventListener('click', () => {
+      const have = unlocked.has(a.id);
+      toast((have ? '✅ ' : '🔒 ') + a.title + ' · ' + a.desc, have ? '' : 'error');
+      haptic('sel');
+    });
+    grid.appendChild(cell);
+  }
+}
+
+// Pop the achievement-unlock celebration toast for one id, then queue the rest.
+let __achQueue = [];
+let __achPlaying = false;
+function showAchievementUnlocks(ids) {
+  if (!ids || !ids.length) return;
+  __achQueue.push(...ids);
+  if (!__achPlaying) playNextAchToast();
+}
+function playNextAchToast() {
+  if (!__achQueue.length) { __achPlaying = false; return; }
+  __achPlaying = true;
+  const id = __achQueue.shift();
+  const a = (state.achievementsCatalog || []).find(x => x.id === id);
+  if (!a) { playNextAchToast(); return; }
+  const el = document.getElementById('achToast');
+  document.getElementById('achToastIcon').textContent = a.icon;
+  document.getElementById('achToastTitle').textContent = a.title;
+  el.classList.add('show');
+  haptic('win'); sndStreak();
+  track('achievement_unlocked', { id: a.id });
+  setTimeout(() => { el.classList.remove('show'); setTimeout(playNextAchToast, 400); }, 2400);
+}
+
+// Streak rewards from the server come as [{at: streakN, type: 'hint'|'shield', value: N}]
+function showStreakRewards(rewards) {
+  if (!rewards || !rewards.length) return;
+  for (const r of rewards) {
+    const txt = r.type === 'hint'
+      ? `🔥 ${r.at}-day streak! +${r.value} 💡 hint`
+      : `🛡️ ${r.at}-day streak! +${r.value}-day Streak Shield`;
+    setTimeout(() => toast(txt), 300);
+  }
+}
+
 function openStats() {
   const m = state.me || {};
   document.getElementById('sGames').textContent = m.games_played || 0;
@@ -1894,6 +2018,7 @@ function openStats() {
   document.getElementById('sWinPct').textContent = pct;
   document.getElementById('sStreak').textContent = m.streak || 0;
   document.getElementById('sMaxStreak').textContent = m.max_streak || 0;
+  renderAchievements();
   // Distribution
   const dist = (m.guess_dist || [0,0,0,0,0,0]);
   const max = Math.max(1, ...dist);
@@ -2275,8 +2400,16 @@ function renderShop() {
         <div class="sku-title">${title}</div>
         <div class="sku-desc">${desc}</div>
       </div>
-      <button class="sku-buy ${alreadyOwned ? 'owned' : ''}" data-sku="${sku.id}">${alreadyOwned ? t('shop.owned') : '⭐ ' + sku.price}</button>
+      <button class="sku-buy ${alreadyOwned ? 'owned' : ''}" data-sku="${sku.id}">${alreadyOwned ? t('shop.owned') : '⭐ ' + sku.price + (sku.id === 'pro_monthly' ? ' /mo' : '')}</button>
     `;
+    // Pro subscription active badge
+    if (sku.id === 'pro_monthly' && proActive) {
+      const titleEl = row.querySelector('.sku-title');
+      const badge = document.createElement('span');
+      badge.className = 'sku-badge-active';
+      badge.textContent = t('ach.subscribed');
+      titleEl.appendChild(badge);
+    }
     const btn = row.querySelector('.sku-buy');
     if (!alreadyOwned) btn.addEventListener('click', () => buy(sku.id));
     list.appendChild(row);
@@ -2393,6 +2526,7 @@ async function useHint() {
   }
   // Store the hint and re-render the current row to show the ghost letter.
   state.hint = { index: r.body.index, letter: r.body.letter };
+  state.usedHintThisGame = true;  // tells server to NOT advance no_hints_run on this game's win
   // Locally decrement so the UI feels instant (server already deducted).
   if (!proActive) state.me.hints_balance = Math.max(0, (state.me.hints_balance | 0) - 1);
   toast(t('game.hint_used') + ': ' + r.body.letter.toUpperCase() + ' · ' + (r.body.index + 1));
@@ -2456,6 +2590,7 @@ async function loadSpeedNextWord() {
 }
 
 async function loadSpeed() {
+  state.usedHintThisGame = false;
   loadSpeedBest();
   state.speedScore = 0;
   state.speedRunning = false;
@@ -2521,10 +2656,16 @@ async function endSpeedRun(reason) {
   updateSpeedHud(0);
   msg(t('speed.time_up') + ' · ' + state.speedScore + ' ' + (isNewBest ? '🏆' : ''));
   renderPrimaryBtn();
-  setTimeout(openStats, 700);
+  // Report to server so best_speed + speed_* achievements get checked.
+  try {
+    const r = await api('/api/speed-end', { score: state.speedScore });
+    if (r.ok && r.body && r.body.newlyUnlocked) showAchievementUnlocks(r.body.newlyUnlocked);
+  } catch (_) {}
+  setTimeout(openStats, 1200);
 }
 
 async function loadPractice() {
+  state.usedHintThisGame = false;
   try {
     const r = await fetch('/api/practice/new?lang=' + encodeURIComponent(state.lang));
     const j = await r.json();
@@ -2558,6 +2699,7 @@ async function switchMode(mode) {
 }
 
 async function loadToday(force) {
+  state.usedHintThisGame = false;
   const r = await api('/api/today', { lang: state.lang });
   if (!r.ok) { toast(r.body && r.body.error || t('err.network'), 'error'); return; }
   state.dayIdx = r.body.dayIdx;
@@ -2672,6 +2814,10 @@ document.addEventListener('keydown', (e) => {
   let flags = {};
   try { flags = await (await fetch('/api/flags')).json(); } catch (_) {}
   state.flags = flags || {};
+  // Load achievements catalog (parallel — non-blocking, fine if it lags).
+  fetch('/api/achievements/catalog').then(r => r.json()).then(j => {
+    if (Array.isArray(j)) state.achievementsCatalog = j;
+  }).catch(() => {});
   if (flags && flags.mixpanel_token) {
     initMixpanel(flags.mixpanel_token);
     startSessionTracking();

@@ -156,6 +156,17 @@ async function initSchema() {
     -- Earn-tab missions completed per user. We track per (tg_id, mission_id)
     -- so a user can never double-claim the same mission.
     ALTER TABLE users ADD COLUMN IF NOT EXISTS missions_done JSONB NOT NULL DEFAULT '[]'::jsonb;
+    -- Achievements: array of unlocked ids. Each entry can be granted once
+    -- only — server checks membership before pushing. Display order is the
+    -- order of unlocks (oldest first).
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS achievements_unlocked JSONB NOT NULL DEFAULT '[]'::jsonb;
+    -- Trackers feeding multi-event achievements.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS no_hints_run INTEGER NOT NULL DEFAULT 0;     -- consecutive wins without hints
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS langs_won JSONB NOT NULL DEFAULT '[]'::jsonb; -- distinct langs the player has won in
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS best_speed INTEGER NOT NULL DEFAULT 0;
+    -- Streak rewards: highest streak number we've already paid out rewards for.
+    -- Used to make 'every 7 days = +1 hint' and 'every 30 days = +shield' idempotent.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_streak_rewarded INTEGER NOT NULL DEFAULT 0;
   `;
   try {
     await dbPool.query(sql);
@@ -372,6 +383,45 @@ function resolveUser(req) {
   return { id, first_name: 'Dev', username: 'dev', photo_url: null };
 }
 
+// ============ Achievements ============
+// Server-side source of truth. Client mirrors this list for display labels;
+// only the IDs are stored in users.achievements_unlocked. Adding a new
+// achievement is just: add to this list + define a check in the right hook.
+const ACHIEVEMENTS = [
+  { id: 'first_win',     icon: '🎯', title: 'First Word',     desc: 'Win your first puzzle' },
+  { id: 'guess_2',       icon: '🎓', title: 'Genius',         desc: 'Solve a puzzle in 2 guesses' },
+  { id: 'guess_1',       icon: '🪄', title: 'Lucky Strike',   desc: 'Solve a puzzle in 1 guess' },
+  { id: 'streak_7',      icon: '🔥', title: 'Week Warrior',   desc: '7-day winning streak' },
+  { id: 'streak_30',     icon: '💪', title: 'Month Master',   desc: '30-day winning streak' },
+  { id: 'streak_100',    icon: '🏆', title: 'Centurion',      desc: '100-day winning streak' },
+  { id: 'no_hints_10',   icon: '🚫', title: 'Pure Solver',    desc: '10 wins in a row without hints' },
+  { id: 'speed_10',      icon: '⚡', title: 'Speed Demon',    desc: '10+ words in one Speed run' },
+  { id: 'speed_20',      icon: '🚀', title: 'Lightning',      desc: '20+ words in one Speed run' },
+  { id: 'polyglot',      icon: '🌍', title: 'Polyglot',       desc: 'Win in 3 different languages' },
+  { id: 'bookworm',      icon: '📚', title: 'Bookworm',       desc: 'Play 30 puzzles total' },
+  { id: 'patron',        icon: '💝', title: 'Patron',         desc: 'Support Slovo with Pro' },
+];
+const ACHIEVEMENT_IDS = new Set(ACHIEVEMENTS.map(a => a.id));
+
+// Helper: mark a set of achievements unlocked for a user. Idempotent — only
+// pushes ids not already in the unlocked array. Returns the actually new ids
+// (so the API can return them to the client for a celebration toast).
+async function unlockAchievements(uid, candidateIds) {
+  if (!dbReady || !candidateIds || !candidateIds.length) return [];
+  try {
+    const cur = await dbPool.query('SELECT achievements_unlocked FROM users WHERE tg_id = $1', [uid]);
+    const have = new Set(((cur.rows[0] && cur.rows[0].achievements_unlocked) || []));
+    const fresh = candidateIds.filter(id => ACHIEVEMENT_IDS.has(id) && !have.has(id));
+    if (!fresh.length) return [];
+    const next = [...have, ...fresh];
+    await dbPool.query(
+      'UPDATE users SET achievements_unlocked = $2::jsonb, updated_at = now() WHERE tg_id = $1',
+      [uid, JSON.stringify(next)]
+    );
+    return fresh;
+  } catch (e) { console.error('[ach] unlock err:', e.message); return []; }
+}
+
 // ============ SKU catalog (server is source of truth for prices + grants) ============
 // Stars conversion: 1⭐ ≈ $0.013 USD (50⭐ ≈ $0.65, 500⭐ ≈ $6.50).
 // Min purchase ≥ 50⭐ (Telegram-recommended) except `test_purchase` (admin).
@@ -406,17 +456,25 @@ const SKUS = {
   },
   pro_monthly: {
     id: 'pro_monthly',
-    title: 'Slovo Pro · 1 month',
-    description: 'Unlimited extra puzzles, 3 hints/day, archive, all themes.',
+    title: 'Slovo Pro · Monthly',
+    description: 'Auto-renews monthly. Unlimited puzzles, 3 hints/day, archive, all themes. Cancel anytime in Telegram.',
     price: 299, priceUsd: '$3.89',
     grant: { proDays: 30 },
+    // Telegram Stars subscription — auto-renews every 30 days until the
+    // user cancels from their Telegram Settings → Stars page. createInvoiceLink
+    // receives subscription_period: 2592000 (the only allowed value today).
+    // Each renewal fires a fresh successful_payment with a new charge_id,
+    // so our idempotent ledger grants another 30 days automatically.
+    subscription: true,
   },
   pro_yearly: {
     id: 'pro_yearly',
-    title: 'Slovo Pro · 1 year',
-    description: 'Everything in Pro for a year. 30% off vs monthly.',
+    title: 'Slovo Pro · 1 Year (Save 30%)',
+    description: 'One-time payment for 365 days of Pro. No auto-renewal.',
     price: 2499, priceUsd: '$32.49',
     grant: { proDays: 365 },
+    // NOT a subscription — Telegram Stars only supports 30-day subscription
+    // periods as of v1, so yearly stays as a one-time grant.
   },
   gift_pro: {
     id: 'gift_pro',
@@ -486,6 +544,34 @@ app.use(express.static(__dirname, {
     }
   },
 }));
+
+// Public catalog: achievements catalog for the client to render
+app.get('/api/achievements/catalog', (_req, res) => {
+  res.json(ACHIEVEMENTS);
+});
+
+// Client reports a Speed-mode run result. Server updates best_speed and
+// checks the speed_10 / speed_20 achievements.
+app.post('/api/speed-end', async (req, res) => {
+  const user = resolveUser(req);
+  if (!user) return res.status(401).json({ error: 'auth required' });
+  const score = Math.max(0, Number((req.body || {}).score) | 0);
+  if (!dbReady) return res.json({ newlyUnlocked: [], best: score });
+  try {
+    const u = (await dbPool.query('SELECT best_speed FROM users WHERE tg_id = $1', [user.id])).rows[0];
+    if (u && score > (u.best_speed | 0)) {
+      await dbPool.query('UPDATE users SET best_speed = $2, updated_at = now() WHERE tg_id = $1', [user.id, score]);
+    }
+    const candidates = [];
+    if (score >= 10) candidates.push('speed_10');
+    if (score >= 20) candidates.push('speed_20');
+    const newlyUnlocked = await unlockAchievements(user.id, candidates);
+    res.json({ newlyUnlocked, best: Math.max(score, u ? (u.best_speed | 0) : 0) });
+  } catch (e) {
+    console.error('[speed-end] err:', e.message);
+    res.status(500).json({ error: 'persist failed' });
+  }
+});
 
 // ============ Public meta endpoints ============
 app.get('/api/flags', (req, res) => {
@@ -637,13 +723,28 @@ app.post('/api/guess', async (req, res) => {
         [user.id, lang, dayIdx, JSON.stringify(progress.guesses), JSON.stringify(progress.patterns), progress.state, answer]
       );
       // Update streak / stats only for TODAY's puzzle, not archive.
+      let newlyUnlocked = [], streakRewards = [];
       if (dayIdx === today && (progress.state === 'won' || progress.state === 'lost')) {
-        await updateUserStats(user.id, progress, dayIdx);
+        // Detect whether a hint was used this game by checking the hinted_used
+        // marker — we don't persist that separately, but use-hint deducts from
+        // hints_balance, so a simpler proxy: presence of an explicit flag from
+        // client OR compare hints_balance before/after. For v1 we trust the
+        // client signal (passed via initData/body? cleaner: check progress).
+        // We track no_hints_run via this proxy: if the row's hints_balance
+        // dropped during the game window we'd need to track. To keep it
+        // simple and correct: check the request body's `usedHint` flag.
+        const usedHint = !!(req.body && req.body.usedHint);
+        const r = await updateUserStats(user.id, progress, dayIdx, lang, usedHint);
+        newlyUnlocked = r.newlyUnlocked || [];
+        streakRewards = r.streakRewards || [];
       }
       // Referral progress + reward
       if (dayIdx === today && progress.state !== 'playing') {
         await advanceReferralProgress(user.id);
       }
+      // Stash rewards on the response so the client can show them
+      res.locals.newlyUnlocked = newlyUnlocked;
+      res.locals.streakRewards = streakRewards;
     } catch (e) { console.error('[guess] persist failed:', e.message); }
   }
   res.json({
@@ -651,13 +752,15 @@ app.post('/api/guess', async (req, res) => {
     state: progress.state,
     guessesUsed: progress.guesses.length,
     answer: progress.state !== 'playing' ? answer : undefined,
+    newlyUnlocked: res.locals.newlyUnlocked || [],
+    streakRewards: res.locals.streakRewards || [],
   });
 });
 
-async function updateUserStats(uid, progress, dayIdx) {
-  if (!dbReady) return;
+async function updateUserStats(uid, progress, dayIdx, lang, usedHintThisGame) {
+  if (!dbReady) return { newlyUnlocked: [], streakRewards: [] };
   const u = (await dbPool.query('SELECT * FROM users WHERE tg_id = $1', [uid])).rows[0];
-  if (!u) return;
+  if (!u) return { newlyUnlocked: [], streakRewards: [] };
   const won = progress.state === 'won';
   const guesses = progress.guesses.length;
   const dist = Array.isArray(u.guess_dist) ? u.guess_dist.slice() : [0,0,0,0,0,0];
@@ -667,26 +770,73 @@ async function updateUserStats(uid, progress, dayIdx) {
   if (won) {
     if (u.last_won_day === dayIdx - 1) streak = u.streak + 1;
     else if (u.last_won_day === dayIdx - 2 && Number(u.shield_until) > Date.now()) streak = u.streak + 1;
-    else if (u.last_won_day === dayIdx) streak = u.streak; // re-record (idempotent)
+    else if (u.last_won_day === dayIdx) streak = u.streak;
     else streak = 1;
   } else {
-    // Lost — streak survives if shield active and this is the only miss.
     if (Number(u.shield_until) > Date.now()) streak = u.streak;
     else streak = 0;
   }
   const maxStreak = Math.max(u.max_streak, streak);
   const gamesPlayed = u.games_played + 1;
   const gamesWon = u.games_won + (won ? 1 : 0);
+
+  // No-hints run: increment on hint-free win, reset on hint-used win or any loss.
+  let noHintsRun = Number(u.no_hints_run || 0);
+  if (won && !usedHintThisGame) noHintsRun += 1;
+  else                          noHintsRun = 0;
+
+  // Langs won: add this lang if won.
+  let langsWon = Array.isArray(u.langs_won) ? u.langs_won.slice() : [];
+  if (won && lang && !langsWon.includes(lang)) langsWon.push(lang);
+
+  // Streak rewards (every 7 days = +1 hint, every 30 days = +Streak Shield 7d).
+  // Idempotent via last_streak_rewarded — we only pay for milestones above it.
+  let hintsBonus = 0;
+  let shieldBonusMs = 0;
+  const streakRewards = [];
+  let lastRewarded = Number(u.last_streak_rewarded || 0);
+  if (won && streak > lastRewarded) {
+    for (let m = lastRewarded + 1; m <= streak; m++) {
+      if (m % 7 === 0)  { hintsBonus += 1;                    streakRewards.push({ at: m, type: 'hint',   value: 1 }); }
+      if (m % 30 === 0) { shieldBonusMs += 7 * 86_400_000;    streakRewards.push({ at: m, type: 'shield', value: 7 }); }
+    }
+    lastRewarded = streak;
+  }
+  const newHints  = Math.max(0, (u.hints_balance | 0) + hintsBonus);
+  const newShield = (Number(u.shield_until) > Date.now())
+    ? Number(u.shield_until) + shieldBonusMs
+    : Date.now() + shieldBonusMs;
+
   await dbPool.query(
     `UPDATE users SET
        streak = $2, max_streak = $3,
        last_won_day = CASE WHEN $4 THEN $5 ELSE last_won_day END,
        last_played_day = $5,
        games_played = $6, games_won = $7,
-       guess_dist = $8::jsonb, updated_at = now()
+       guess_dist = $8::jsonb,
+       no_hints_run = $9, langs_won = $10::jsonb,
+       hints_balance = $11, shield_until = $12::bigint,
+       last_streak_rewarded = $13,
+       updated_at = now()
        WHERE tg_id = $1`,
-    [uid, streak, maxStreak, won, dayIdx, gamesPlayed, gamesWon, JSON.stringify(dist)]
+    [uid, streak, maxStreak, won, dayIdx, gamesPlayed, gamesWon,
+     JSON.stringify(dist), noHintsRun, JSON.stringify(langsWon),
+     newHints, newShield, lastRewarded]
   );
+
+  // Achievement checks (run after the update so checks see fresh state)
+  const candidates = [];
+  if (won && gamesWon === 1)        candidates.push('first_win');
+  if (won && guesses === 1)         candidates.push('guess_1');
+  if (won && guesses === 2)         candidates.push('guess_2');
+  if (streak >= 7)                  candidates.push('streak_7');
+  if (streak >= 30)                 candidates.push('streak_30');
+  if (streak >= 100)                candidates.push('streak_100');
+  if (noHintsRun >= 10)             candidates.push('no_hints_10');
+  if (langsWon.length >= 3)         candidates.push('polyglot');
+  if (gamesPlayed >= 30)            candidates.push('bookworm');
+  const newlyUnlocked = await unlockAchievements(uid, candidates);
+  return { newlyUnlocked, streakRewards };
 }
 
 // Body: { initData } -> stats + IAP balances + active theme + Pro state
@@ -698,6 +848,7 @@ app.post('/api/me', async (req, res) => {
     guess_dist: [0,0,0,0,0,0], hints_balance: 0, shield_until: 0,
     archive_unlocked: false, themes_owned: [], active_theme: 'default',
     pro_until: 0, ref_count: 0, missions_done: [],
+    achievements_unlocked: [], best_speed: 0, no_hints_run: 0, langs_won: [],
   };
   if (dbReady) {
     let row = (await dbPool.query('SELECT * FROM users WHERE tg_id = $1', [user.id])).rows[0];
@@ -720,6 +871,10 @@ app.post('/api/me', async (req, res) => {
         notif_opted_in: row.notif_opted_in,
         lang: row.lang,
         missions_done: Array.isArray(row.missions_done) ? row.missions_done : [],
+        achievements_unlocked: Array.isArray(row.achievements_unlocked) ? row.achievements_unlocked : [],
+        best_speed: Number(row.best_speed || 0),
+        no_hints_run: Number(row.no_hints_run || 0),
+        langs_won: Array.isArray(row.langs_won) ? row.langs_won : [],
       };
     }
   }
@@ -800,9 +955,11 @@ app.post('/api/use-hint', async (req, res) => {
   for (let i = 0; i < answer.length; i++) if (!greens.has(i)) candidates.push(i);
   if (!candidates.length) return res.json({ index: -1, letter: '', note: 'all greens already' });
   const choice = candidates[Math.floor(Math.random() * candidates.length)];
-  // Deduct hint unless Pro
+  // Deduct hint unless Pro; reset the no-hints run.
   if (!proActive) {
-    await dbPool.query('UPDATE users SET hints_balance = GREATEST(0, hints_balance - 1), updated_at = now() WHERE tg_id = $1', [user.id]);
+    await dbPool.query('UPDATE users SET hints_balance = GREATEST(0, hints_balance - 1), no_hints_run = 0, updated_at = now() WHERE tg_id = $1', [user.id]);
+  } else {
+    await dbPool.query('UPDATE users SET no_hints_run = 0, updated_at = now() WHERE tg_id = $1', [user.id]);
   }
   res.json({ index: choice, letter: answer[choice] });
 });
@@ -818,17 +975,25 @@ app.post('/api/create-invoice', async (req, res) => {
   if (item.adminOnly && !isAdmin(user.id)) return res.status(403).json({ error: 'sku is admin-only' });
   const payload = JSON.stringify({ uid: user.id, sku, gift: giftRecipientUid || null, ts: Date.now() });
   try {
+    const invoiceBody = {
+      title: item.title,
+      description: item.description,
+      payload,
+      provider_token: '',
+      currency: 'XTR',
+      prices: [{ label: item.title, amount: item.price }],
+    };
+    // Stars subscription: pass subscription_period in seconds. Telegram
+    // currently only supports 2592000s (30 days). Adding this turns the
+    // invoice into an auto-renewing subscription managed by Telegram —
+    // the user can cancel anytime from Telegram Settings → Stars.
+    if (item.subscription) {
+      invoiceBody.subscription_period = 2592000;
+    }
     const r = await fetch(`${TELEGRAM_API}/createInvoiceLink`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: item.title,
-        description: item.description,
-        payload,
-        provider_token: '',
-        currency: 'XTR',
-        prices: [{ label: item.title, amount: item.price }],
-      }),
+      body: JSON.stringify(invoiceBody),
     });
     const data = await r.json();
     if (!data.ok) return res.status(500).json({ error: data.description || 'telegram api failed' });
@@ -888,6 +1053,10 @@ async function applyGrantSideEffects(uid, sku, grant) {
   if (ops.length) {
     const setClause = ops.map(o => o[0]).join(', ');
     await dbPool.query(`UPDATE users SET ${setClause}, updated_at = now() WHERE tg_id = $1`, [uid]);
+  }
+  // Patron achievement: anyone who buys Pro (any duration) unlocks it.
+  if (typeof g.proDays === 'number') {
+    await unlockAchievements(uid, ['patron']);
   }
   // Gift Pro: deliver to recipient via the recorded payload.
   if (typeof g.giftProDays === 'number') {
