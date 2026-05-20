@@ -56,6 +56,8 @@ services:
         sync: false            # set manually in the dashboard — secret
       - key: BOT_USERNAME
         sync: false            # e.g. "SlovoGameBot" — used by share links
+      - key: CHANNEL_URL
+        sync: false            # e.g. "https://t.me/SlovoOfficial" — used by follow-channel mission
       - key: MIXPANEL_TOKEN
         sync: false            # optional — analytics fires only when set
       - key: BOINKERS_API_KEY

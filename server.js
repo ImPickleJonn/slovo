@@ -49,6 +49,13 @@ const BOINKERS_PARTNER_NAME = process.env.BOINKERS_PARTNER_NAME || 'SlovoPartner
 const BOINKERS_CAMPAIGN     = process.env.BOINKERS_CAMPAIGN     || 'campSlovoWord';
 const BOINKERS_DEEP_LINK    = `https://t.me/boinker_bot/boinkapp?startapp=${BOINKERS_CAMPAIGN}`;
 
+// Used by the share-app mission + any other Slovo-link share. If unset,
+// falls back to a placeholder that Pickle will fix once the real bot is named.
+const BOT_USERNAME = process.env.BOT_USERNAME || 'SlovoGameBot';
+const CHANNEL_URL  = process.env.CHANNEL_URL  || 'https://t.me/SlovoOfficial';
+const SHARE_TEXT   = '🧠 Daily word puzzle on Telegram — can you beat me?';
+const SHARE_URL    = `https://t.me/share/url?url=${encodeURIComponent('https://t.me/' + BOT_USERNAME)}&text=${encodeURIComponent(SHARE_TEXT)}`;
+
 // ============ Postgres (player state + daily progress + IAP ledger) ============
 // DATABASE_URL is auto-injected by Railway/Render when a Postgres add-on is
 // linked. Without it the DB layer no-ops so local dev still boots — the client
@@ -1219,8 +1226,8 @@ const BOINKERS_VERIFY = {
 };
 const DEFAULT_MISSIONS = [
   // ---- SIMPLE (trust-on-tap) ----
-  { id: 'follow-channel', kind: 'simple', title: 'Follow on Telegram', description: 'Join the Slovo channel for daily word reveals.', logo: '📢', url: 'https://t.me/SlovoOfficial', reward: 2 },
-  { id: 'share-app',      kind: 'simple', title: 'Share with a friend', description: 'Tap to share Slovo. Both of you start the streak together.', logo: '🤝', url: 'https://t.me/share/url?url=https%3A%2F%2Ft.me%2FSlovoGameBot&text=%F0%9F%A7%A0%20Daily%20word%20puzzle%20%E2%80%94%20can%20you%20beat%20me%3F', reward: 2 },
+  { id: 'follow-channel', kind: 'simple', title: 'Follow on Telegram', description: 'Join the Slovo channel for daily word reveals.', logo: '📢', url: CHANNEL_URL, reward: 2 },
+  { id: 'share-app',      kind: 'simple', title: 'Share with a friend', description: 'Tap to share Slovo. Both of you start the streak together.', logo: '🤝', url: SHARE_URL, reward: 2 },
   { id: 'set-emoji-status', kind: 'simple', title: 'Set Slovo emoji status', description: 'Add 🧠 as your Telegram emoji status.', logo: '🧠', url: 'tg://emoji-status', reward: 3 },
   // ---- VERIFIED via Boinkers partner API ----
   { id: 'play-boinkers',       kind: 'simple', title: 'Try Boinkers',                description: 'Open Boinkers and play a round.',                                    logo: '/api/bot-avatar/boinker_bot', url: BOINKERS_DEEP_LINK, reward: 3 },
