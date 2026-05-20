@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Slovo — Bot avatar (square). 512×512.
+  Design rationale: at Telegram chat-list size (~80px), 5 tiny tiles in a
+  row become an unreadable green bar. A single ultra-bold letter on a solid
+  green ground stays legible at any scale and reads as "Wordle-style" via
+  the iconic green color alone. NYT's "W" icon uses the same principle.
+  Tile rounding matches modern app-icon convention (~22% radius).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" shape-rendering="geometricPrecision">
+  <!-- Wordle-green tile background, rounded -->
+  <rect width="512" height="512" rx="112" ry="112" fill="#538d4e"/>
+  <!-- Subtle inner highlight for depth (top edge lighter) -->
+  <rect width="512" height="512" rx="112" ry="112"
+        fill="url(#grad)" fill-opacity="0.18"/>
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#ffffff"/>
+      <stop offset="60%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- The "S" — single dominant letter, ultra-bold, slightly tracked -->
+  <text x="256" y="358"
+        font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial Black, sans-serif"
+        font-size="360" font-weight="900"
+        text-anchor="middle" fill="#ffffff"
+        letter-spacing="-8">S</text>
+  <!-- Tiny tile-grid hint at the bottom, signals "word puzzle"
+       without dominating the icon. 5 small dots = 5-letter game. -->
+  <g fill="#ffffff" fill-opacity="0.55">
+    <rect x="160" y="442" width="22" height="22" rx="4"/>
+    <rect x="194" y="442" width="22" height="22" rx="4"/>
+    <rect x="228" y="442" width="22" height="22" rx="4"/>
+    <rect x="262" y="442" width="22" height="22" rx="4"/>
+    <rect x="296" y="442" width="22" height="22" rx="4" fill-opacity="1"/>
+  </g>
+</svg>

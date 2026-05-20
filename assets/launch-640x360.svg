@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Slovo — Mini App launch image. 640×360.
+  Shown in BotFather as the "demo" image when someone discovers the bot
+  in Telegram's mini-app catalog. Bigger canvas → can show the full 5-tile
+  SLOVO wordmark + tagline. This is the conversion surface: the image
+  someone sees BEFORE deciding to tap Play.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" shape-rendering="geometricPrecision">
+  <!-- App-dark background matches the default theme inside the app -->
+  <rect width="640" height="360" fill="#0f1117"/>
+  <!-- Subtle vertical grid lines to suggest a word grid -->
+  <g stroke="#2c3140" stroke-width="1" opacity="0.6">
+    <line x1="80"  y1="0" x2="80"  y2="360"/>
+    <line x1="160" y1="0" x2="160" y2="360"/>
+    <line x1="240" y1="0" x2="240" y2="360"/>
+    <line x1="320" y1="0" x2="320" y2="360"/>
+    <line x1="400" y1="0" x2="400" y2="360"/>
+    <line x1="480" y1="0" x2="480" y2="360"/>
+    <line x1="560" y1="0" x2="560" y2="360"/>
+  </g>
+  <!-- 5 tiles spelling SLOVO, centered. Solid Wordle green —
+       conveys "I won this" + brand color in one go. -->
+  <g transform="translate(120, 102)">
+    <g>
+      <rect x="0"   y="0" width="76" height="76" rx="6" fill="#538d4e"/>
+      <text x="38"  y="58" font-family="-apple-system, Arial Black, sans-serif"
+            font-size="50" font-weight="900" text-anchor="middle" fill="#fff">S</text>
+    </g>
+    <g>
+      <rect x="84"  y="0" width="76" height="76" rx="6" fill="#538d4e"/>
+      <text x="122" y="58" font-family="-apple-system, Arial Black, sans-serif"
+            font-size="50" font-weight="900" text-anchor="middle" fill="#fff">L</text>
+    </g>
+    <g>
+      <rect x="168" y="0" width="76" height="76" rx="6" fill="#538d4e"/>
+      <text x="206" y="58" font-family="-apple-system, Arial Black, sans-serif"
+            font-size="50" font-weight="900" text-anchor="middle" fill="#fff">O</text>
+    </g>
+    <g>
+      <rect x="252" y="0" width="76" height="76" rx="6" fill="#538d4e"/>
+      <text x="290" y="58" font-family="-apple-system, Arial Black, sans-serif"
+            font-size="50" font-weight="900" text-anchor="middle" fill="#fff">V</text>
+    </g>
+    <g>
+      <rect x="336" y="0" width="76" height="76" rx="6" fill="#538d4e"/>
+      <text x="374" y="58" font-family="-apple-system, Arial Black, sans-serif"
+            font-size="50" font-weight="900" text-anchor="middle" fill="#fff">O</text>
+    </g>
+  </g>
+  <!-- Tagline — keeps it skimmable. Capitals + tracking for poster feel. -->
+  <text x="320" y="232"
+        font-family="-apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif"
+        font-size="20" font-weight="700" letter-spacing="3"
+        text-anchor="middle" fill="#b0b6c1">DAILY WORD PUZZLE</text>
+  <!-- One yellow tile bottom-right hints at the Wordle mechanic without
+       making the wordmark itself look "wrong" (all-green = solved feel). -->
+  <g opacity="0.7">
+    <rect x="540" y="280" width="42" height="42" rx="5" fill="#b59f3b"/>
+    <text x="561" y="312" font-family="-apple-system, Arial Black, sans-serif"
+          font-size="26" font-weight="900" text-anchor="middle" fill="#fff">?</text>
+  </g>
+</svg>
