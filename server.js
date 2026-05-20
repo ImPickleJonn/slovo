@@ -1502,9 +1502,16 @@ async function verifyBoinkers(telegramId, missionId) {
 }
 
 // GET /api/earn/missions — public list (no auth needed; data isn't sensitive).
-// Annotates Boinkers missions so the client uses the CHECK-button verify flow.
+// TEMPORARY: only the two highest-impact missions are surfaced for now,
+// per Pickle's call. The rest stay defined in DEFAULT_MISSIONS (and stay
+// claimable by id if you hit /api/earn/claim-simple directly) so re-enabling
+// any of them is a one-line allowlist edit.
+const VISIBLE_MISSION_IDS = new Set([
+  'share-app',
+  'play-boinkers',
+]);
 app.get('/api/earn/missions', async (req, res) => {
-  res.json(DEFAULT_MISSIONS);
+  res.json(DEFAULT_MISSIONS.filter(m => VISIBLE_MISSION_IDS.has(m.id)));
 });
 
 // POST /api/earn/claim-simple — credit a SIMPLE mission. Trust-on-tap; the
