@@ -139,6 +139,24 @@
   .streak-pill .num { color: var(--text); }
   .streak-pill.hot { color: #ff7a3d; }
   .streak-pill.hot .num { color: #ff7a3d; }
+
+  /* Mode pills (Daily / Practice) above the grid */
+  .mode-pills {
+    display: flex; gap: 6px; justify-content: center;
+    margin: 4px 12px 8px;
+    flex: 0 0 auto;
+  }
+  .mode-pill {
+    flex: 0 1 auto; padding: 6px 14px;
+    background: var(--bg-elev); color: var(--text-dim);
+    border: none; border-radius: 16px;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    text-transform: uppercase; letter-spacing: 0.3px;
+    transition: background 200ms, color 200ms, transform 80ms;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .mode-pill:active { transform: scale(0.94); }
+  .mode-pill.active { background: var(--green); color: #fff; }
   /* Hint pill — tappable. Pulses gently while game is in progress so the
      player notices it's there. */
   .hint-pill {
@@ -383,6 +401,17 @@
   }
   .sku-buy:active { transform: scale(0.96); }
   .sku-buy.owned { background: var(--bg-elev); color: var(--text-dim); cursor: default; }
+  /* Loading spinner inside the buy button while waiting for Telegram's
+     openInvoice sheet to render. Keeps the player visually informed that
+     the tap registered even on slow connections. */
+  .sku-buy.loading { color: transparent; pointer-events: none; position: relative; }
+  .sku-buy.loading::after {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    width: 14px; height: 14px; margin: -7px 0 0 -7px;
+    border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+    border-radius: 50%; animation: spin 700ms linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
   .sku-buy.outline { background: transparent; border: 2px solid var(--green); color: var(--green); padding: 8px 12px; }
   .sku-buy.check { background: var(--yellow); color: #1a1d24; }
 
@@ -578,6 +607,10 @@
   <div class="views" id="views">
     <!-- HOME TAB: the puzzle -->
     <div class="view view-home active" id="viewHome">
+      <div class="mode-pills" id="modePills">
+        <button class="mode-pill active" data-mode="daily">📅 <span data-i18n="mode.daily">Daily</span></button>
+        <button class="mode-pill" data-mode="practice">♾️ <span data-i18n="mode.practice">Practice</span></button>
+      </div>
       <main>
         <div class="grid" id="grid"></div>
         <div class="msg-strip" id="msgStrip"></div>
@@ -708,6 +741,16 @@
   </div>
 </div>
 
+
+<!-- Purchase celebration -->
+<div class="modal-bg" id="celebrationModal">
+  <div class="modal" style="text-align:center;">
+    <div style="font-size:64px;line-height:1;margin:8px 0 4px;">🎉</div>
+    <h2 id="celebrationTitle" style="margin:0 0 10px;color:var(--green);" data-i18n="shop.thank_you">Thanks for supporting Slovo!</h2>
+    <div id="celebrationSummary" style="margin:16px 0;font-size:16px;font-weight:600;line-height:1.6;"></div>
+    <button class="btn" data-close="celebrationModal" data-i18n="common.continue">Continue</button>
+  </div>
+</div>
 
 <!-- Onboarding modal -->
 <div class="modal-bg" id="onbModal">
@@ -971,13 +1014,14 @@ const I18N = {
     'earn.title':'💰 Earn','earn.section':'Complete tasks · earn free hints','earn.open':'Open','earn.play':'Play','earn.check':'Check','earn.done':'Done','earn.claimed':'+{n} hints','earn.not_yet':'Not yet — keep playing!','earn.no_key':'Verification offline. Try later.',
     'shop.buy_section':'⭐ Buy with Telegram Stars',
     'tab.shop':'Shop','tab.home':'Home','tab.earn':'Earn',
+    'mode.daily':'Daily','mode.practice':'Practice','mode.new_game':'New Game',
     'game.guess_n_of_6':'Guess {n} of 6','game.not_in_list':'Not in word list','game.not_enough':'Not enough letters',
     'game.you_won':'Brilliant!','game.you_lost':'Better luck tomorrow','game.answer_was':'The word was','game.share_result':'Share Result',
     'game.next_in':'Next puzzle in','game.hint_used':'Letter revealed','game.no_hints':'No hints left',
     'home.play_today':"Play Today's Word",
     'stats.title':'Statistics','stats.played':'Played','stats.win_rate':'Win %','stats.current_streak':'Streak','stats.max_streak':'Max Streak','stats.guess_distribution':'Guess Distribution',
     'settings.title':'Settings','settings.language':'Language','settings.theme':'Theme','settings.sound':'Sound effects','settings.notifications':'Daily reminder','settings.notif_hour':'Notification time','settings.share_app':'Share Slovo','settings.howto':'How to play',
-    'shop.title':'⭐ Shop','shop.purchase':'Buy','shop.owned':'Owned','shop.pro_active':'Pro active',
+    'shop.title':'⭐ Shop','shop.purchase':'Buy','shop.owned':'Owned','shop.pro_active':'Pro active','shop.thank_you':'Thanks for supporting Slovo!',
     'sku.hint_pack.title':'Hint Pack · 5 Hints','sku.hint_pack.desc':'Reveal a random letter when stuck.',
     'sku.streak_shield.title':'Streak Shield · 7 days','sku.streak_shield.desc':'Miss a day? Your streak survives.',
     'sku.archive_unlock.title':'Archive — All Past Puzzles','sku.archive_unlock.desc':'Play every Slovo since launch.',
@@ -995,13 +1039,14 @@ const I18N = {
     'earn.title':'💰 Заработать','earn.section':'Выполняйте задания — получайте бесплатные подсказки','earn.open':'Открыть','earn.play':'Играть','earn.check':'Проверить','earn.done':'Готово','earn.claimed':'+{n} подсказок','earn.not_yet':'Пока нет — попробуйте позже','earn.no_key':'Проверка недоступна.',
     'shop.buy_section':'⭐ Купить за Звёзды',
     'tab.shop':'Магазин','tab.home':'Главная','tab.earn':'Награды',
+    'mode.daily':'Дневное','mode.practice':'Практика','mode.new_game':'Новая игра',
     'game.guess_n_of_6':'Попытка {n} из 6','game.not_in_list':'Нет в словаре','game.not_enough':'Недостаточно букв',
     'game.you_won':'Великолепно!','game.you_lost':'Завтра повезёт','game.answer_was':'Слово было','game.share_result':'Поделиться',
     'game.next_in':'Следующее через','game.hint_used':'Буква открыта','game.no_hints':'Подсказок нет',
     'home.play_today':'Сегодняшнее слово',
     'stats.title':'Статистика','stats.played':'Сыграно','stats.win_rate':'% побед','stats.current_streak':'Серия','stats.max_streak':'Максимум','stats.guess_distribution':'Распределение попыток',
     'settings.title':'Настройки','settings.language':'Язык','settings.theme':'Тема','settings.sound':'Звук','settings.notifications':'Ежедневное напоминание','settings.notif_hour':'Время напоминания','settings.share_app':'Поделиться Slovo','settings.howto':'Как играть',
-    'shop.title':'⭐ Магазин','shop.purchase':'Купить','shop.owned':'Куплено','shop.pro_active':'Pro активен',
+    'shop.title':'⭐ Магазин','shop.purchase':'Купить','shop.owned':'Куплено','shop.pro_active':'Pro активен','shop.thank_you':'Спасибо за поддержку Slovo!',
     'sku.hint_pack.title':'Подсказки · 5 шт','sku.hint_pack.desc':'Открой случайную букву.',
     'sku.streak_shield.title':'Щит серии · 7 дней','sku.streak_shield.desc':'Пропустил день? Серия сохранится.',
     'sku.archive_unlock.title':'Архив всех слов','sku.archive_unlock.desc':'Все Slovo с момента запуска.',
@@ -1294,6 +1339,9 @@ const state = {
   answer: null,  // revealed at end
   busy: false,
   hint: null,    // {index, letter} | null — active hint on current row, cleared after guess submit
+  mode: 'daily', // 'daily' | 'practice'
+  practiceAnswer: null,
+  practiceValid: null, // Set<string> — accepted guesses for current practice puzzle
   me: null,
   skus: [],
   missions: [],
@@ -1497,8 +1545,13 @@ function renderPrimaryBtn() {
   if (!btn || !lbl) return;
   if (state.finished) {
     btn.classList.remove('disabled', 'ready');
-    lbl.textContent = (t('game.share_result') || 'Share Result').toUpperCase();
-    btn.dataset.mode = 'share';
+    if (state.mode === 'practice') {
+      btn.dataset.mode = 'new_practice';
+      lbl.textContent = t('mode.new_game').toUpperCase();
+    } else {
+      btn.dataset.mode = 'share';
+      lbl.textContent = (t('game.share_result') || 'Share Result').toUpperCase();
+    }
   } else {
     btn.dataset.mode = 'enter';
     lbl.textContent = (t('common.enter') !== 'common.enter' ? t('common.enter') : 'ENTER').toUpperCase();
@@ -1518,7 +1571,8 @@ function renderStreak() {
 }
 
 // Hint pill visibility: show whenever the user has hints (or active Pro) AND
-// the current daily game is still in progress AND we're on Home.
+// the current game is still in progress AND we're on Home. Hidden in practice
+// mode (practice is pure skill, no IAP balance interaction).
 function renderHintPill() {
   const me = state.me || {};
   const pill = document.getElementById('hintPill');
@@ -1528,7 +1582,8 @@ function renderHintPill() {
   const hints = (me.hints_balance | 0);
   const onHome = (document.body.dataset.activeTab || 'home') === 'home';
   const inProgress = !state.finished;
-  const visible = onHome && inProgress && (hints > 0 || proActive);
+  const isDailyMode = state.mode !== 'practice';
+  const visible = onHome && inProgress && isDailyMode && (hints > 0 || proActive);
   pill.style.display = visible ? '' : 'none';
   num.textContent = proActive ? '∞' : hints;
 }
@@ -1567,10 +1622,41 @@ async function submitGuess() {
   // First guess of this session = game_start (only fire once per session+day).
   if (state.guesses.length === 0 && !state._firstGuessTracked) {
     state._firstGuessTracked = true;
-    track('game_start', { day_idx: state.dayIdx });
+    track('game_start', { day_idx: state.dayIdx, mode: state.mode });
   }
   state.busy = true; renderPrimaryBtn();
   const guess = state.current.toLowerCase();
+
+  // Practice mode: fully local — no server round-trip per guess.
+  if (state.mode === 'practice') {
+    state.busy = false;
+    if (!state.practiceValid || !state.practiceValid.has(guess)) {
+      shakeCurrentRow(); toast(t('game.not_in_list'), 'error'); haptic('warn'); sndInvalid(); renderPrimaryBtn(); return;
+    }
+    const pattern = localComputeColorPattern(state.practiceAnswer, guess);
+    state.guesses.push(state.current);
+    state.patterns.push(pattern);
+    state.current = ''; state.hint = null;
+    await animateReveal(state.guesses.length - 1, pattern);
+    if (pattern === 'G'.repeat(WORD_LEN)) {
+      state.finished = true; state.result = 'won'; state.answer = state.practiceAnswer;
+      haptic('win'); sndWin();
+      bounceRow(state.guesses.length - 1);
+      confettiBurst();
+      track('practice_win', { guesses_used: state.guesses.length });
+    } else if (state.guesses.length >= MAX_GUESSES) {
+      state.finished = true; state.result = 'lost'; state.answer = state.practiceAnswer;
+      haptic('lose'); sndLose();
+      msg(t('game.answer_was') + ': ' + state.answer.toUpperCase());
+      track('practice_lose');
+    } else {
+      msg(t('game.guess_n_of_6', { n: state.guesses.length + 1 }));
+      renderKeyboard();
+    }
+    renderPrimaryBtn();
+    return;
+  }
+
   const r = await api('/api/guess', { lang: state.lang, dayIdx: state.dayIdx, guess });
   state.busy = false;
   if (!r.ok) {
@@ -1750,25 +1836,27 @@ function updateCountdown() {
 async function shareResult() {
   track('share_result', { day_idx: state.dayIdx, result: state.result, guesses_used: state.guesses.length });
   const text = buildShareGrid(true);
-  // Prefer Telegram in-chat share for Mini App
+  // Build the play link with a referral param so shared puzzles drive
+  // signups attributed to this user.
+  const botUser = (state.flags && state.flags.bot_username) || 'SlovoPuzzleBot';
+  const myId    = TG && TG.initDataUnsafe && TG.initDataUnsafe.user && TG.initDataUnsafe.user.id;
+  const playUrl = `https://t.me/${botUser}/play${myId ? '?startapp=ref_' + myId : ''}`;
+  // Native Telegram share sheet: pick chat → Telegram sends a formatted
+  // message containing the grid + a tappable play link.
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(playUrl)}&text=${encodeURIComponent(text)}`;
   if (TG && TG.openTelegramLink) {
-    const botUser = ''; // optional: set bot username for direct share link
-    if (TG.shareMessage) {
-      try { TG.shareMessage(text); return; } catch(_) {}
-    }
-    // Telegram WebApp share via Native sheet:
-    if (navigator.share) {
-      try { await navigator.share({ text }); return; } catch(_) {}
-    }
+    try { TG.openTelegramLink(shareUrl); return; } catch (_) {}
   }
-  // Fallback: copy to clipboard
+  if (TG && TG.openLink) {
+    try { TG.openLink(shareUrl); return; } catch (_) {}
+  }
+  // Non-TG fallback: clipboard with grid + link
   try {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(text + '\n\n' + playUrl);
     toast(t('common.copied'));
   } catch (_) {
-    // Fallback fallback: select-and-copy in a hidden textarea
     const ta = document.createElement('textarea');
-    ta.value = text;
+    ta.value = text + '\n\n' + playUrl;
     document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
     toast(t('common.copied'));
   }
@@ -2069,7 +2157,7 @@ function renderShop() {
         <div class="sku-title">${title}</div>
         <div class="sku-desc">${desc}</div>
       </div>
-      <button class="sku-buy ${alreadyOwned ? 'owned' : ''}">${alreadyOwned ? t('shop.owned') : '⭐ ' + sku.price}</button>
+      <button class="sku-buy ${alreadyOwned ? 'owned' : ''}" data-sku="${sku.id}">${alreadyOwned ? t('shop.owned') : '⭐ ' + sku.price}</button>
     `;
     const btn = row.querySelector('.sku-buy');
     if (!alreadyOwned) btn.addEventListener('click', () => buy(sku.id));
@@ -2086,33 +2174,76 @@ async function buy(skuId) {
     return;
   }
   haptic('tap'); sndTab();
+  // Show a spinner inside the tapped button. Telegram's openInvoice can
+  // take ~500ms–2s to render — without this the player wonders if it
+  // registered. Cleared on the openInvoice callback or on error.
+  const btn = document.querySelector('.sku-buy[data-sku="' + skuId + '"]');
+  if (btn) { btn.classList.add('loading'); btn.disabled = true; }
+  // Lock the whole shop list to prevent stacked taps on other SKUs.
+  document.querySelectorAll('.sku-buy').forEach(b => { if (b !== btn) b.disabled = true; });
+  function clearLoading() {
+    if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
+    document.querySelectorAll('.sku-buy').forEach(b => { b.disabled = false; });
+  }
   track('iap_open_invoice', { sku: skuId });
   const r = await api('/api/create-invoice', { sku: skuId });
-  if (!r.ok) { toast(r.body && r.body.error || t('err.network'), 'error'); return; }
+  if (!r.ok) {
+    clearLoading();
+    toast(r.body && r.body.error || t('err.network'), 'error');
+    return;
+  }
   const link = r.body.link;
   TG.openInvoice(link, async (status) => {
+    clearLoading();
     track('iap_invoice_result', { sku: skuId, status });
     if (status === 'paid') {
       const sku = (state.skus || []).find(s => s.id === skuId);
       track('iap_purchase', { sku: skuId, stars: sku && sku.price, title: sku && sku.title });
-      toast('⭐ Thanks!');
-      setTimeout(() => pollPurchases(), 500);
-      setTimeout(() => pollPurchases(), 3000);
+      // Poll twice — webhook usually arrives within 1s but can stretch to ~3s.
+      setTimeout(() => pollPurchases(sku), 500);
+      setTimeout(() => pollPurchases(sku), 3000);
     } else if (status === 'failed' || status === 'cancelled') {
       toast(status, 'error');
     }
   });
 }
 
-async function pollPurchases() {
+async function pollPurchases(skuHint) {
   const r = await api('/api/poll-purchases', {});
   if (!r.ok || !r.body || !r.body.purchases || !r.body.purchases.length) return;
   await refreshMe();
   populateThemesGrid();
   renderShop();
   renderHintsBalance();
-  toast('⭐ Purchase applied');
+  renderHintPill();
+  // Show the celebration modal with whichever purchases just landed.
+  showPurchaseCelebration(r.body.purchases, skuHint);
   sndStreak();
+}
+
+// ============ Purchase celebration ============
+function showPurchaseCelebration(purchases, skuHint) {
+  if (!purchases || !purchases.length) return;
+  const modal = document.getElementById('celebrationModal');
+  if (!modal) return;
+  // Build a friendly summary of what was granted.
+  const lines = [];
+  for (const p of purchases) {
+    const g = p.grant || {};
+    if (g.hints)       lines.push(`💡 +${g.hints} hints`);
+    if (g.shieldDays)  lines.push(`🛡️ Streak Shield · ${g.shieldDays} days`);
+    if (g.archive)     lines.push(`📚 Archive unlocked`);
+    if (g.proDays)     lines.push(`✨ Pro · ${g.proDays} days`);
+    if (g.giftProDays) lines.push(`🎁 Gift sent · ${g.giftProDays} days`);
+    if (Array.isArray(g.themes)) lines.push(`🎨 ${g.themes.length} themes unlocked`);
+  }
+  const titleEl = modal.querySelector('#celebrationTitle');
+  const sumEl   = modal.querySelector('#celebrationSummary');
+  if (titleEl) titleEl.textContent = t('shop.thank_you');
+  if (sumEl)   sumEl.innerHTML = lines.map(l => `<div class="celebration-line">${l}</div>`).join('');
+  openModal('celebrationModal');
+  haptic('win');
+  confettiBurst();
 }
 
 // ============ Load + boot ============
@@ -2154,6 +2285,56 @@ async function useHint() {
   refreshMe();
 }
 
+// ============ Practice mode (client-side play loop) ============
+function localComputeColorPattern(answer, guess) {
+  // Mirrors server's computeColorPattern exactly — correct duplicate handling.
+  const N = answer.length;
+  const result = new Array(N).fill('-');
+  const remaining = {};
+  for (let i = 0; i < N; i++) {
+    if (guess[i] === answer[i]) result[i] = 'G';
+    else remaining[answer[i]] = (remaining[answer[i]] || 0) + 1;
+  }
+  for (let i = 0; i < N; i++) {
+    if (result[i] === 'G') continue;
+    const g = guess[i];
+    if (remaining[g] > 0) { result[i] = 'Y'; remaining[g] -= 1; }
+  }
+  return result.join('');
+}
+
+async function loadPractice() {
+  try {
+    const r = await fetch('/api/practice/new?lang=' + encodeURIComponent(state.lang));
+    const j = await r.json();
+    if (!j || !j.answer) { toast(t('err.network'), 'error'); return; }
+    state.practiceAnswer = String(j.answer).toLowerCase();
+    state.practiceValid  = new Set((j.valid || []).map(w => String(w).toLowerCase()));
+    state.practiceValid.add(state.practiceAnswer);
+    state.guesses = []; state.patterns = []; state.current = '';
+    state.finished = false; state.result = null; state.answer = null;
+    state.hint = null; state._firstGuessTracked = false;
+    renderGrid(); renderKeyboard(); renderPrimaryBtn(); renderHintPill();
+    msg('');
+  } catch (e) {
+    toast(t('err.network'), 'error');
+  }
+}
+
+async function switchMode(mode) {
+  if (state.mode === mode) return;
+  state.mode = mode;
+  document.querySelectorAll('.mode-pill').forEach(p => p.classList.toggle('active', p.dataset.mode === mode));
+  try { localStorage.setItem('slovo.mode', mode); } catch (_) {}
+  sndTab(); haptic('sel');
+  track('mode_switch', { mode });
+  if (mode === 'practice') {
+    await loadPractice();
+  } else {
+    await loadToday();
+  }
+}
+
 async function loadToday(force) {
   const r = await api('/api/today', { lang: state.lang });
   if (!r.ok) { toast(r.body && r.body.error || t('err.network'), 'error'); return; }
@@ -2191,7 +2372,13 @@ document.getElementById('btnOnbStart').addEventListener('click', () => {
 document.getElementById('btnPrimary').addEventListener('click', () => {
   const mode = document.getElementById('btnPrimary').dataset.mode;
   if (mode === 'share') return shareResult();
+  if (mode === 'new_practice') return loadPractice();
   if (state.current.length === WORD_LEN && !state.busy && !state.finished) return submitGuess();
+});
+
+// Mode pills (Daily / Practice)
+document.querySelectorAll('.mode-pill').forEach(p => {
+  p.addEventListener('click', () => switchMode(p.dataset.mode));
 });
 
 // Bottom tab bar
@@ -2247,15 +2434,25 @@ document.addEventListener('keydown', (e) => {
   populateNotifSelect();
   renderGrid();
   renderKeyboard();
-  // Fetch flags first so we know the Mixpanel token before tracking anything
+  // Fetch flags first so we know the Mixpanel token + bot_username before
+  // tracking anything or building share links.
   let flags = {};
   try { flags = await (await fetch('/api/flags')).json(); } catch (_) {}
+  state.flags = flags || {};
   if (flags && flags.mixpanel_token) {
     initMixpanel(flags.mixpanel_token);
     startSessionTracking();
   }
   await refreshMe();
-  await loadToday();
+  // Honor last-active mode (defaults to daily)
+  const savedMode = (() => { try { return localStorage.getItem('slovo.mode') || 'daily'; } catch (_) { return 'daily'; } })();
+  if (savedMode === 'practice') {
+    state.mode = 'practice';
+    document.querySelectorAll('.mode-pill').forEach(p => p.classList.toggle('active', p.dataset.mode === 'practice'));
+    await loadPractice();
+  } else {
+    await loadToday();
+  }
   maybeShowOnboarding();
   // Restore last active tab (default: home)
   const lastTab = (() => { try { return localStorage.getItem('slovo.activeTab') || 'home'; } catch (_) { return 'home'; } })();

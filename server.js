@@ -516,6 +516,25 @@ app.get('/api/skus', (req, res) => {
   });
 });
 
+// ============ Practice / Unlimited mode ============
+// Returns a random answer + the lang's valid-guess set so the client can
+// play entirely locally — no per-guess RTT. Practice mode grants nothing
+// (no streak, no hints debited, no IAP grants), so leaking the answer
+// to the client is fine: there's nothing to cheat for.
+app.get('/api/practice/new', (req, res) => {
+  let lang = String(req.query.lang || 'en');
+  if (!SUPPORTED_LANGS.includes(lang)) lang = 'en';
+  const answers = ANSWERS[lang] || ANSWERS.en;
+  if (!answers || !answers.length) return res.status(503).json({ error: 'no words for lang' });
+  const answer = answers[Math.floor(Math.random() * answers.length)];
+  const validSet = VALID[lang] || new Set([answer]);
+  // For payload size: cap valid list to ~15k words. Most langs are well
+  // under this; only EN + RU + PL hit it. Strict enough that fake words
+  // get rejected, generous enough that real words almost always pass.
+  const valid = Array.from(validSet);
+  res.json({ answer, valid });
+});
+
 // ============ Game API ============
 // Today's puzzle metadata. NEVER includes the answer for in-progress games.
 // Body: { initData, lang, dayIdx? }   dayIdx = override for archive replay (Pro only)
