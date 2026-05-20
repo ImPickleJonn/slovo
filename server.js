@@ -674,9 +674,18 @@ app.post('/api/today', async (req, res) => {
 
 // Submit a guess. Server validates the word, computes colors, persists, and
 // returns the pattern. Never reveals the answer mid-game.
-// Body: { initData, lang, dayIdx, guess }
+// Body: { initData, lang, dayIdx, guess, usedHint? }
 app.post('/api/guess', async (req, res) => {
   const user = resolveUser(req);
+  // Defensively ensure the user row exists BEFORE updateUserStats runs.
+  // Without this, a player whose first authenticated call to the server
+  // was /api/guess (no /api/me yet) would have updateUserStats silently
+  // no-op because the SELECT returned no row — first_win + games_played
+  // would stay at zero forever. /api/me also creates the row but isn't
+  // guaranteed to fire before the first guess submit.
+  if (user && dbReady) {
+    try { await loadOrCreateUser(user); } catch (e) { console.error('[guess] loadOrCreate failed:', e.message); }
+  }
   let { lang = 'en', dayIdx, guess } = req.body || {};
   if (!SUPPORTED_LANGS.includes(lang)) lang = 'en';
   const today = currentDayIdx();
@@ -824,9 +833,13 @@ async function updateUserStats(uid, progress, dayIdx, lang, usedHintThisGame) {
      newHints, newShield, lastRewarded]
   );
 
-  // Achievement checks (run after the update so checks see fresh state)
+  // Achievement checks (run after the update so checks see fresh state).
+  // first_win uses >= 1 (not === 1) so users with prior games — which
+  // existed before achievements shipped — can still unlock it on their
+  // next win. unlockAchievements is idempotent: if it's already in the
+  // user's array, this is a no-op.
   const candidates = [];
-  if (won && gamesWon === 1)        candidates.push('first_win');
+  if (won && gamesWon >= 1)         candidates.push('first_win');
   if (won && guesses === 1)         candidates.push('guess_1');
   if (won && guesses === 2)         candidates.push('guess_2');
   if (streak >= 7)                  candidates.push('streak_7');

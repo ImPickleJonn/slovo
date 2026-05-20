@@ -211,7 +211,7 @@
     transition: opacity 240ms, transform 280ms cubic-bezier(.2,.7,.3,1);
     max-width: 90vw;
   }
-  .ach-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .ach-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; cursor: pointer; }
   .ach-toast .ach-toast-icon { font-size: 36px; line-height: 1; }
   .ach-toast .ach-toast-body { display: flex; flex-direction: column; }
   .ach-toast .ach-toast-label { font-size: 11px; font-weight: 700; opacity: 0.85; text-transform: uppercase; letter-spacing: 1px; }
@@ -2122,12 +2122,12 @@ function playNextAchCard() {
   }, 2600);
 }
 
-// Tap the ach-toast card itself to dismiss early.
+// Tap the ach-toast card itself to dismiss early. pointer-events stays
+// 'none' when hidden so the invisible-but-positioned toast doesn't eat
+// clicks meant for elements under it (was blocking the hint pill).
 document.addEventListener('DOMContentLoaded', () => {
   const el = document.getElementById('achToast');
   if (el) {
-    el.style.pointerEvents = 'auto';
-    el.style.cursor = 'pointer';
     el.addEventListener('click', () => {
       if (__achHideTimer) clearTimeout(__achHideTimer);
       el.classList.remove('show');
