@@ -26,8 +26,15 @@
     --primary: #538d4e;
     --primary-fg: #ffffff;
     --danger: #d9534f;
-    --safe-top: env(safe-area-inset-top, 0px);
-    --safe-bot: env(safe-area-inset-bottom, 0px);
+    /* Two-layer safe area: env() handles the iOS notch on regular web,
+       and --tg-safe-* gets set from JS by reading TG.contentSafeAreaInset
+       (env() returns 0 inside the Telegram WebView even when there's a
+       real chrome bar — this is a known Match Icon quirk). max() takes
+       whichever is bigger so we always clear both notch AND TG chrome. */
+    --safe-top: max(env(safe-area-inset-top, 0px), var(--tg-safe-top, 0px));
+    --safe-bot: max(env(safe-area-inset-bottom, 0px), var(--tg-safe-bot, 0px));
+    --tg-safe-top: 0px;
+    --tg-safe-bot: 0px;
   }
   /* Theme: light */
   body[data-theme="light"] {
@@ -132,6 +139,27 @@
   .streak-pill .num { color: var(--text); }
   .streak-pill.hot { color: #ff7a3d; }
   .streak-pill.hot .num { color: #ff7a3d; }
+  /* Hint pill — tappable. Pulses gently while game is in progress so the
+     player notices it's there. */
+  .hint-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--bg-elev); padding: 4px 10px; border-radius: 14px;
+    font-weight: 700; font-size: 13px; color: var(--text);
+    border: 1.5px solid var(--green);
+    cursor: pointer; transition: transform 80ms, background 200ms;
+    margin-right: 4px;
+  }
+  .hint-pill:active { transform: scale(0.93); background: var(--bg-elev-2); }
+  .hint-pill .num { color: var(--green); }
+  .tile.hinted {
+    border: 2px dashed var(--yellow); color: var(--yellow);
+    background: transparent;
+    animation: hintGlow 1.4s ease-in-out infinite;
+  }
+  @keyframes hintGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(181,159,59,0); }
+    50%      { box-shadow: 0 0 12px 2px rgba(181,159,59,0.4); }
+  }
 
   main {
     flex: 1 1 auto; min-height: 0;
@@ -541,6 +569,7 @@
     </div>
     <div class="brand" id="brand">SLOVO</div>
     <div class="header-btns">
+      <button class="hint-pill" id="hintPill" style="display:none;" title="Use a hint">💡 <span class="num" id="hintNum">0</span></button>
       <span class="streak-pill" id="streakPill" style="display:none;"><span>🔥</span><span class="num" id="streakNum">0</span></span>
       <button class="icon-btn" id="btnSettings" title="Settings">⚙️</button>
     </div>
@@ -722,6 +751,36 @@ if (TG) {
     // they ignore unknown methods.
     TG.requestFullscreen && TG.requestFullscreen();
   } catch(_){}
+}
+
+// Push TG-reported safe-area insets into CSS variables. env(safe-area-inset-*)
+// returns 0 inside the Telegram WebView even when there's a real chrome
+// bar — this is the known workaround. Re-applied on every viewport/fullscreen
+// change so the header doesn't slide under the chrome when fullscreen is
+// granted then revoked (e.g. user swipes down).
+function applyTgSafeArea() {
+  if (!TG) return;
+  const csi = TG.contentSafeAreaInset || {};
+  const si  = TG.safeAreaInset || {};
+  const top = Math.max(csi.top || 0, si.top || 0);
+  const bot = Math.max(csi.bottom || 0, si.bottom || 0);
+  document.documentElement.style.setProperty('--tg-safe-top', top + 'px');
+  document.documentElement.style.setProperty('--tg-safe-bot', bot + 'px');
+}
+if (TG) {
+  applyTgSafeArea();
+  if (TG.onEvent) {
+    TG.onEvent('viewportChanged',          applyTgSafeArea);
+    TG.onEvent('safeAreaChanged',          applyTgSafeArea);
+    TG.onEvent('contentSafeAreaChanged',   applyTgSafeArea);
+    TG.onEvent('fullscreenChanged',        applyTgSafeArea);
+    TG.onEvent('fullscreenFailed',         applyTgSafeArea);
+  }
+  // Belt-and-braces: re-poll a couple of times early — some Telegram
+  // versions don't fire the events but the insets become available after
+  // a tick.
+  setTimeout(applyTgSafeArea, 100);
+  setTimeout(applyTgSafeArea, 500);
 }
 
 function haptic(kind) {
@@ -1218,6 +1277,7 @@ const state = {
   result: null,  // 'won' | 'lost'
   answer: null,  // revealed at end
   busy: false,
+  hint: null,    // {index, letter} | null — active hint on current row, cleared after guess submit
   me: null,
   skus: [],
   missions: [],
@@ -1358,9 +1418,16 @@ function renderGrid() {
         tile.classList.add('revealed');
         tile.dataset.color = state.patterns[r][c];
       } else if (r === state.guesses.length) {
-        // Current row
-        tile.textContent = state.current[c] || '';
-        if (state.current[c]) tile.classList.add('typed');
+        // Current row — show user-typed letters, with the active hint
+        // ghosted at its position if the player hasn't typed there yet.
+        const typed = state.current[c];
+        if (typed) {
+          tile.textContent = typed;
+          tile.classList.add('typed');
+        } else if (state.hint && state.hint.index === c) {
+          tile.textContent = state.hint.letter.toUpperCase();
+          tile.classList.add('hinted');
+        }
       }
       row.appendChild(tile);
     }
@@ -1434,6 +1501,22 @@ function renderStreak() {
   if (streak >= 7) pill.classList.add('hot'); else pill.classList.remove('hot');
 }
 
+// Hint pill visibility: show whenever the user has hints (or active Pro) AND
+// the current daily game is still in progress AND we're on Home.
+function renderHintPill() {
+  const me = state.me || {};
+  const pill = document.getElementById('hintPill');
+  const num  = document.getElementById('hintNum');
+  if (!pill || !num) return;
+  const proActive = (me.pro_until || 0) > Date.now();
+  const hints = (me.hints_balance | 0);
+  const onHome = (document.body.dataset.activeTab || 'home') === 'home';
+  const inProgress = !state.finished;
+  const visible = onHome && inProgress && (hints > 0 || proActive);
+  pill.style.display = visible ? '' : 'none';
+  num.textContent = proActive ? '∞' : hints;
+}
+
 // ============ Input ============
 function handleKey(key) {
   if (state.busy || state.finished) {
@@ -1484,6 +1567,7 @@ async function submitGuess() {
   state.guesses.push(state.current);
   state.patterns.push(pattern);
   state.current = '';
+  state.hint = null;  // hint applies to one row only; clear after each guess
   // Flip animation then re-render
   await animateReveal(state.guesses.length - 1, pattern);
   if (r.body.state === 'won') {
@@ -1806,6 +1890,8 @@ async function switchTab(tab) {
   if (target) target.classList.add('active');
   // Tab-bar highlight
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  // Hint pill is home-only — re-evaluate on tab change.
+  renderHintPill();
   sndTab(); haptic('sel');
   // Lazy-load tab contents
   if (tab === 'shop') {
@@ -2019,7 +2105,37 @@ async function refreshMe() {
   if (r.ok) {
     state.me = r.body.stats || {};
     renderStreak();
+    renderHintPill();
   }
+}
+
+async function useHint() {
+  if (state.busy || state.finished) return;
+  const me = state.me || {};
+  const proActive = (me.pro_until || 0) > Date.now();
+  if (!proActive && (me.hints_balance | 0) <= 0) {
+    toast(t('game.no_hints'), 'error');
+    switchTab('shop');
+    return;
+  }
+  state.busy = true; renderPrimaryBtn();
+  const r = await api('/api/use-hint', { lang: state.lang, dayIdx: state.dayIdx });
+  state.busy = false;
+  if (!r.ok || !r.body || typeof r.body.index !== 'number' || r.body.index < 0 || !r.body.letter) {
+    toast((r.body && r.body.error) || t('err.network'), 'error');
+    renderPrimaryBtn();
+    return;
+  }
+  // Store the hint and re-render the current row to show the ghost letter.
+  state.hint = { index: r.body.index, letter: r.body.letter };
+  // Locally decrement so the UI feels instant (server already deducted).
+  if (!proActive) state.me.hints_balance = Math.max(0, (state.me.hints_balance | 0) - 1);
+  toast(t('game.hint_used') + ': ' + r.body.letter.toUpperCase() + ' · ' + (r.body.index + 1));
+  haptic('tap'); sndStreak();
+  renderGrid(); renderHintPill(); renderPrimaryBtn();
+  track('hint_used', { day_idx: state.dayIdx, index: r.body.index });
+  // Cross-check with server in case Pro / balance has drifted
+  refreshMe();
 }
 
 async function loadToday(force) {
@@ -2036,6 +2152,7 @@ async function loadToday(force) {
   renderGrid();
   renderKeyboard();
   renderPrimaryBtn();
+  renderHintPill();
   if (state.finished) {
     msg(state.result === 'won' ? t('game.you_won') : (t('game.answer_was') + ': ' + (state.answer || '').toUpperCase()));
   } else if (state.guesses.length === 0) {
@@ -2065,6 +2182,9 @@ document.getElementById('btnPrimary').addEventListener('click', () => {
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
+
+// Hint pill
+document.getElementById('hintPill').addEventListener('click', useHint);
 
 // Wire header buttons
 document.getElementById('btnStats').addEventListener('click', openStats);
