@@ -1,0 +1,62 @@
+# Render Blueprint for Slovo.
+#
+# How to use:
+#   1. Sign in at https://render.com and connect your GitHub account
+#      (so Render can pull from ImPickleJonn/slovo).
+#   2. Render dashboard → "New +" → "Blueprint" → pick this repo.
+#   3. Render reads this file, provisions a web service + Postgres in
+#      one shot, and starts the first build.
+#   4. After the service is up, set the THREE secret env vars manually
+#      in the Render dashboard (they are marked sync: false below so
+#      the Blueprint never tries to commit secrets to the repo):
+#         - BOT_TOKEN        (your Telegram bot token, from @BotFather)
+#         - ADMIN_TG_IDS     (comma-separated Telegram user IDs)
+#         - PUZZLE_SALT      (any long random string — prevents anyone
+#                             from deriving the daily word from a source-only
+#                             view of the answer list)
+#   5. PUBLIC_DOMAIN is auto-populated by Render after the first build
+#      (fromService below), so you do NOT need to set it manually. The
+#      server reads PUBLIC_DOMAIN to build the Telegram webhook URL and
+#      the play-now buttons in notifications.
+#   6. Open https://{your-render-url}/api/setup-webhook ONCE to register
+#      the webhook + bot commands with Telegram.
+
+services:
+  - type: web
+    name: slovo
+    runtime: node
+    plan: starter              # $7/mo, no sleep. Free tier sleeps after 15min idle.
+    region: oregon             # US-West. Change to "frankfurt" or "singapore" if your audience is concentrated elsewhere.
+    branch: main
+    autoDeploy: true           # Render redeploys on every push to main.
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/flags
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: PUBLIC_DOMAIN
+        # Auto-populates with the web service's own .onrender.com hostname
+        # AFTER the first build finishes. server.js reads PUBLIC_DOMAIN to
+        # build the Telegram webhook URL and the play-now buttons in
+        # notifications, so this needs to point at the live host.
+        fromService:
+          type: web
+          name: slovo
+          property: host
+      - key: DATABASE_URL
+        fromDatabase:
+          name: slovo-db
+          property: connectionString
+      - key: BOT_TOKEN
+        sync: false            # set manually in the dashboard — secret
+      - key: ADMIN_TG_IDS
+        sync: false            # set manually in the dashboard — secret
+      - key: PUZZLE_SALT
+        sync: false            # set manually in the dashboard — secret
+
+databases:
+  - name: slovo-db
+    plan: basic-256mb          # cheapest paid tier, ~$6/mo. Free tier exists but expires after 90 days; not worth the migration risk.
+    databaseName: slovo
+    user: slovo

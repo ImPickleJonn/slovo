@@ -1,0 +1,1630 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0f1117">
+<title>Slovo</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23538d4e'/%3E%3Ctext x='16' y='22' font-size='18' font-family='system-ui' font-weight='700' text-anchor='middle' fill='%23fff'%3ES%3C/text%3E%3C/svg%3E">
+<style>
+  /* ============ Theme variables ============ */
+  :root {
+    --bg: #0f1117;
+    --bg-elev: #1a1d24;
+    --bg-elev-2: #242831;
+    --text: #f4f5f7;
+    --text-dim: #b0b6c1;
+    --text-mute: #6a7180;
+    --border: #2c3140;
+    --green: #538d4e;
+    --yellow: #b59f3b;
+    --gray:  #3a3a3c;
+    --tile-empty-border: #3a3a3c;
+    --tile-typed-border: #6a7180;
+    --keycap: #818384;
+    --keycap-fg: #ffffff;
+    --primary: #538d4e;
+    --primary-fg: #ffffff;
+    --danger: #d9534f;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bot: env(safe-area-inset-bottom, 0px);
+  }
+  /* Theme: light */
+  body[data-theme="light"] {
+    --bg: #ffffff; --bg-elev: #f8f9fb; --bg-elev-2: #eef0f4;
+    --text: #1a1d24; --text-dim: #545865; --text-mute: #8a8e98;
+    --border: #d3d6dc;
+    --green: #6aaa64; --yellow: #c9b458; --gray: #787c7e;
+    --tile-empty-border: #d3d6dc; --tile-typed-border: #878a8c;
+    --keycap: #d3d6da; --keycap-fg: #1a1d24;
+  }
+  body[data-theme="neon"] {
+    --bg: #0a0014; --bg-elev: #160028; --bg-elev-2: #21003c;
+    --text: #f9e6ff; --text-dim: #c79fee; --text-mute: #8765aa;
+    --border: #3d1166;
+    --green: #00ff9d; --yellow: #ffd43b; --gray: #4a3070;
+    --keycap: #5a3080; --keycap-fg: #fff;
+  }
+  body[data-theme="sunset"] {
+    --bg: #1f0d23; --bg-elev: #2e1331; --bg-elev-2: #3e1939;
+    --text: #ffeed6; --text-dim: #f5b89a; --text-mute: #a47c6e;
+    --border: #503040;
+    --green: #ff6b35; --yellow: #ffc857; --gray: #6f5060;
+    --keycap: #6f4f5d; --keycap-fg: #ffeed6;
+  }
+  body[data-theme="forest"] {
+    --bg: #0d1c14; --bg-elev: #112a1c; --bg-elev-2: #163823;
+    --text: #ebf5e7; --text-dim: #99c0a3; --text-mute: #678677;
+    --border: #2c4d3a;
+    --green: #8fcb9b; --yellow: #d4b14e; --gray: #4a6657;
+    --keycap: #3d6149; --keycap-fg: #ebf5e7;
+  }
+  body[data-theme="mono"] {
+    --bg: #ffffff; --bg-elev: #fafafa; --bg-elev-2: #f0f0f0;
+    --text: #000; --text-dim: #555; --text-mute: #999;
+    --border: #d0d0d0;
+    --green: #111; --yellow: #888; --gray: #ddd;
+    --tile-empty-border: #d0d0d0; --tile-typed-border: #555;
+    --keycap: #e8e8e8; --keycap-fg: #111;
+  }
+  body[data-theme="pastel"] {
+    --bg: #fdf6f9; --bg-elev: #f7eaf1; --bg-elev-2: #efd9e6;
+    --text: #3b2435; --text-dim: #6e4d63; --text-mute: #9b7a8d;
+    --border: #e2c4d4;
+    --green: #99c1a1; --yellow: #f5d27a; --gray: #cfb8c5;
+    --tile-empty-border: #e2c4d4; --tile-typed-border: #9b7a8d;
+    --keycap: #e9d3df; --keycap-fg: #3b2435;
+  }
+  body[data-theme="holiday"] {
+    --bg: #0c1f12; --bg-elev: #142e1d; --bg-elev-2: #1d3e28;
+    --text: #fff5e1; --text-dim: #f3b9a8; --text-mute: #a08376;
+    --border: #2e5034;
+    --green: #2eb872; --yellow: #ffdd00; --gray: #6c2929;
+    --keycap: #aa3030; --keycap-fg: #fff;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", system-ui, sans-serif;
+    overflow: hidden; height: 100%; width: 100%;
+    overscroll-behavior: none; touch-action: manipulation;
+    user-select: none; -webkit-user-select: none;
+  }
+  body { padding-top: var(--safe-top); padding-bottom: var(--safe-bot); }
+
+  /* ============ Layout ============ */
+  .app {
+    display: flex; flex-direction: column;
+    height: 100vh; max-height: 100vh; overflow: hidden;
+    max-width: 500px; margin: 0 auto;
+  }
+  header {
+    flex: 0 0 56px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .brand { font-weight: 800; font-size: 22px; letter-spacing: 1.5px; }
+  .header-btns { display: flex; gap: 4px; }
+  .icon-btn {
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: none; cursor: pointer;
+    color: var(--text); font-size: 20px; border-radius: 8px;
+    transition: background 120ms, transform 80ms;
+  }
+  .icon-btn:active { background: var(--bg-elev); transform: scale(0.94); }
+  .icon-btn .badge {
+    position: absolute; top: 4px; right: 4px;
+    background: var(--green); color: #fff; font-size: 10px;
+    border-radius: 8px; padding: 1px 5px; font-weight: 700;
+    pointer-events: none;
+  }
+
+  .streak-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--bg-elev); padding: 4px 10px; border-radius: 14px;
+    font-weight: 700; font-size: 13px; color: var(--text-dim);
+  }
+  .streak-pill .num { color: var(--text); }
+  .streak-pill.hot { color: #ff7a3d; }
+  .streak-pill.hot .num { color: #ff7a3d; }
+
+  main {
+    flex: 1 1 auto; min-height: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-start;
+    padding: 16px 12px 8px;
+  }
+
+  /* ============ Grid ============ */
+  .grid {
+    display: grid;
+    grid-template-rows: repeat(6, 1fr);
+    gap: 6px;
+    width: 100%;
+    max-width: min(360px, calc((100vh - 320px) * 5 / 6));
+    aspect-ratio: 5 / 6;
+    margin: 0 auto;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+  .tile {
+    display: flex; align-items: center; justify-content: center;
+    aspect-ratio: 1 / 1;
+    font-weight: 800; font-size: clamp(20px, 6vh, 32px); line-height: 1;
+    text-transform: uppercase;
+    border: 2px solid var(--tile-empty-border);
+    color: var(--text); background: transparent;
+    border-radius: 4px;
+    transition: transform 80ms ease-out;
+    will-change: transform;
+  }
+  .tile.typed {
+    border-color: var(--tile-typed-border);
+    animation: pop 100ms ease-out;
+  }
+  .tile.revealed {
+    border: none;
+    color: #fff;
+  }
+  .tile.flipping { animation: flip 600ms ease-in-out; }
+  .tile.bounce { animation: bounce 600ms ease-in-out; }
+
+  @keyframes pop {
+    0% { transform: scale(0.92); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+  @keyframes flip {
+    0%   { transform: rotateX(0); }
+    50%  { transform: rotateX(90deg); }
+    100% { transform: rotateX(0); }
+  }
+  @keyframes bounce {
+    0%, 20% { transform: translateY(0); }
+    40% { transform: translateY(-22px); }
+    60% { transform: translateY(0); }
+    80% { transform: translateY(-6px); }
+    100% { transform: translateY(0); }
+  }
+  .row.shake { animation: shake 320ms ease-in-out; }
+  @keyframes shake {
+    10%,90% { transform: translateX(-2px); }
+    20%,80% { transform: translateX(4px); }
+    30%,50%,70% { transform: translateX(-6px); }
+    40%,60% { transform: translateX(6px); }
+  }
+  .tile[data-color="G"] { background: var(--green); border-color: var(--green); }
+  .tile[data-color="Y"] { background: var(--yellow); border-color: var(--yellow); }
+  .tile[data-color="-"] { background: var(--gray);   border-color: var(--gray); }
+  .tile.hinted {
+    background: var(--bg-elev-2);
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  /* ============ Keyboard ============ */
+  .kb {
+    flex: 0 0 auto;
+    width: 100%; max-width: 500px;
+    padding: 6px 4px calc(6px + var(--safe-bot));
+    background: var(--bg);
+  }
+  .kb-row {
+    display: flex; justify-content: center; gap: 5px;
+    margin: 4px 0;
+  }
+  .kb-row.compact { gap: 4px; }
+  .key {
+    flex: 1 1 0;
+    height: 52px; max-width: 44px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--keycap); color: var(--keycap-fg);
+    border: none; border-radius: 5px;
+    font-weight: 700; font-size: 15px;
+    cursor: pointer;
+    transition: transform 60ms, background 200ms;
+    text-transform: uppercase;
+  }
+  .key.wide { flex: 1.6 1 0; max-width: 64px; font-size: 13px; letter-spacing: 0.4px; }
+
+  /* Big green primary action bar — sits between message strip and keyboard.
+     Mode 'enter' while playing, 'share' after a finished game. */
+  .primary-bar {
+    flex: 0 0 auto;
+    width: 100%; max-width: 500px;
+    padding: 4px 8px 6px;
+    background: var(--bg);
+  }
+  .btn-primary {
+    width: 100%;
+    height: 50px;
+    background: var(--green); color: #fff;
+    border: none; border-radius: 10px;
+    font-weight: 800; font-size: 16px; letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.15), 0 0 0 0 var(--green);
+    transition: transform 80ms ease-out, box-shadow 200ms, background 200ms, opacity 200ms;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-primary:active { transform: translateY(2px); box-shadow: 0 0 0 rgba(0,0,0,0); }
+  .btn-primary.disabled { background: var(--bg-elev-2); color: var(--text-mute); cursor: default; }
+  .btn-primary.disabled:active { transform: none; }
+  .btn-primary.ready { animation: glowPulse 1.6s ease-in-out infinite; }
+  @keyframes glowPulse {
+    0%, 100% { box-shadow: 0 2px 0 rgba(0,0,0,0.15), 0 0 0 0 rgba(83,141,78,0); }
+    50%      { box-shadow: 0 2px 0 rgba(0,0,0,0.15), 0 0 18px 2px rgba(83,141,78,0.45); }
+  }
+  .key:active { transform: scale(0.92); }
+  .key[data-color="G"] { background: var(--green); color: #fff; }
+  .key[data-color="Y"] { background: var(--yellow); color: #fff; }
+  .key[data-color="-"] { background: var(--gray); color: #fff; opacity: 0.85; }
+  .kb.lots .key { font-size: 13px; }
+
+  /* ============ Status / message strip ============ */
+  .msg-strip {
+    min-height: 28px;
+    padding: 4px 12px;
+    text-align: center;
+    font-size: 14px; color: var(--text-dim);
+    transition: opacity 200ms;
+  }
+  .toast {
+    position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+    background: var(--bg-elev-2); color: var(--text);
+    padding: 10px 16px; border-radius: 8px;
+    font-weight: 600; font-size: 14px;
+    border: 1px solid var(--border);
+    z-index: 100; pointer-events: none;
+    opacity: 0; transition: opacity 200ms, transform 200ms;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(4px); }
+  .toast.error { border-color: var(--danger); color: var(--danger); }
+
+  /* ============ Modals ============ */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: none; align-items: center; justify-content: center;
+    z-index: 200; padding: 16px;
+    animation: fadeIn 180ms;
+  }
+  .modal-bg.show { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    background: var(--bg-elev); color: var(--text);
+    border-radius: 14px; padding: 20px;
+    width: 100%; max-width: 380px; max-height: 90vh; overflow-y: auto;
+    position: relative;
+    animation: slideUp 240ms cubic-bezier(.2,.7,.3,1);
+  }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal h2 { margin: 0 0 12px; font-size: 20px; text-align: center; }
+  .modal .close {
+    position: absolute; top: 10px; right: 10px;
+    width: 32px; height: 32px;
+    background: transparent; border: none; color: var(--text-dim);
+    font-size: 24px; cursor: pointer;
+  }
+  .modal .close:active { color: var(--text); }
+
+  /* Stats */
+  .stats-row { display: flex; justify-content: space-around; margin: 12px 0; }
+  .stats-cell { text-align: center; }
+  .stats-num { font-size: 28px; font-weight: 800; line-height: 1; }
+  .stats-lbl { font-size: 11px; color: var(--text-dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .dist { margin: 16px 0 8px; }
+  .dist-row { display: flex; align-items: center; margin: 4px 0; gap: 8px; font-size: 14px; }
+  .dist-num { width: 14px; text-align: right; font-weight: 700; }
+  .dist-bar {
+    flex: 1; height: 22px; background: var(--bg-elev-2); border-radius: 4px;
+    position: relative; overflow: hidden;
+  }
+  .dist-fill {
+    height: 100%; background: var(--gray); display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 6px; color: #fff; font-weight: 700; font-size: 12px;
+    min-width: 20px; transition: width 400ms;
+  }
+  .dist-fill.current { background: var(--green); }
+  .next-puzzle { text-align: center; margin: 16px 0 8px; color: var(--text-dim); font-size: 13px; }
+  .next-puzzle .time { font-size: 22px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+
+  /* Shop */
+  .sku-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-elev-2); border-radius: 10px;
+    padding: 12px; margin-bottom: 10px;
+  }
+  .sku-info { flex: 1; min-width: 0; padding-right: 12px; }
+  .sku-title { font-weight: 700; font-size: 15px; }
+  .sku-desc { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .sku-buy {
+    flex: 0 0 auto;
+    background: var(--green); color: #fff;
+    border: none; border-radius: 8px;
+    padding: 10px 14px; font-weight: 800; font-size: 14px;
+    cursor: pointer; white-space: nowrap;
+  }
+  .sku-buy:active { transform: scale(0.96); }
+  .sku-buy.owned { background: var(--bg-elev); color: var(--text-dim); cursor: default; }
+
+  /* Settings */
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 4px; border-bottom: 1px solid var(--border);
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-label { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  .setting-icon { font-size: 18px; }
+  .setting-value { font-size: 13px; color: var(--text-dim); display: flex; align-items: center; gap: 4px; position: relative; }
+  .setting-value select {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    -webkit-appearance: none; font-size: 16px;
+  }
+  .toggle {
+    width: 44px; height: 24px; border-radius: 12px;
+    background: var(--bg-elev-2); position: relative; cursor: pointer;
+    transition: background 180ms;
+  }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 20px; height: 20px; background: #fff; border-radius: 50%;
+    transition: transform 180ms;
+  }
+  .toggle.on { background: var(--green); }
+  .toggle.on::after { transform: translateX(20px); }
+
+  /* Themes grid */
+  .themes-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 8px; }
+  .theme-tile {
+    border-radius: 10px; padding: 12px; cursor: pointer;
+    border: 2px solid transparent; position: relative;
+    transition: transform 100ms;
+  }
+  .theme-tile:active { transform: scale(0.96); }
+  .theme-tile.active { border-color: var(--text); }
+  .theme-tile .name { font-weight: 700; font-size: 13px; }
+  .theme-tile .pal { display: flex; gap: 4px; margin-top: 6px; }
+  .theme-tile .pal span { width: 16px; height: 16px; border-radius: 4px; }
+  .theme-tile .lock { position: absolute; top: 8px; right: 8px; font-size: 12px; }
+
+  /* End-game banner inside modal */
+  .end-banner { text-align: center; margin: 8px 0 16px; }
+  .end-banner .emoji { font-size: 48px; margin-bottom: 4px; }
+  .end-banner .word { font-weight: 800; font-size: 22px; letter-spacing: 4px; text-transform: uppercase; color: var(--green); }
+  .share-grid {
+    font-family: monospace; font-size: 18px; line-height: 1.2;
+    background: var(--bg-elev-2); padding: 12px; border-radius: 8px;
+    text-align: center; white-space: pre; margin: 12px 0;
+  }
+  .btn {
+    width: 100%; background: var(--green); color: #fff;
+    border: none; border-radius: 10px; padding: 14px;
+    font-weight: 800; font-size: 16px; cursor: pointer;
+    transition: transform 100ms;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn.outline { background: transparent; color: var(--text); border: 2px solid var(--border); }
+  .btn + .btn { margin-top: 8px; }
+
+  /* Onboarding */
+  .onb-step { text-align: center; margin: 8px 0; }
+  .onb-tiles { display: flex; justify-content: center; gap: 5px; margin: 12px 0; }
+  .onb-tile {
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #fff; border-radius: 4px; font-size: 18px;
+  }
+  .onb-tiles .green { background: var(--green); }
+  .onb-tiles .yellow { background: var(--yellow); }
+  .onb-tiles .gray { background: var(--gray); }
+  .onb-tiles .empty { background: transparent; border: 2px solid var(--border); color: var(--text); }
+  .onb-desc { font-size: 14px; color: var(--text-dim); margin: 6px 0 12px; }
+
+  /* Confetti */
+  .confetti-piece {
+    position: fixed; width: 8px; height: 14px;
+    pointer-events: none; will-change: transform, opacity; z-index: 300;
+  }
+
+  /* RTL */
+  html[dir="rtl"] .header-btns { flex-direction: row-reverse; }
+  html[dir="rtl"] .stats-row { flex-direction: row-reverse; }
+
+  /* Confetti keyframes for the win animation */
+  @keyframes fall {
+    0% { transform: translateY(-20vh) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+</style>
+</head>
+<body data-theme="dark">
+<div class="app" id="app">
+  <header>
+    <div class="header-btns">
+      <button class="icon-btn" id="btnStats" title="Stats">📊</button>
+      <button class="icon-btn" id="btnShop" title="Shop">⭐</button>
+    </div>
+    <div class="brand" id="brand">SLOVO</div>
+    <div class="header-btns">
+      <span class="streak-pill" id="streakPill" style="display:none;"><span>🔥</span><span class="num" id="streakNum">0</span></span>
+      <button class="icon-btn" id="btnSettings" title="Settings">⚙️</button>
+    </div>
+  </header>
+  <main>
+    <div class="grid" id="grid"></div>
+    <div class="msg-strip" id="msgStrip"></div>
+  </main>
+  <div class="primary-bar">
+    <button class="btn-primary disabled" id="btnPrimary"><span id="primaryLabel">ENTER</span></button>
+  </div>
+  <div class="kb" id="kb"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Stats modal -->
+<div class="modal-bg" id="statsModal">
+  <div class="modal">
+    <button class="close" data-close="statsModal">×</button>
+    <h2 data-i18n="stats.title">Statistics</h2>
+    <div class="stats-row">
+      <div class="stats-cell"><div class="stats-num" id="sGames">0</div><div class="stats-lbl" data-i18n="stats.played">Played</div></div>
+      <div class="stats-cell"><div class="stats-num" id="sWinPct">0</div><div class="stats-lbl" data-i18n="stats.win_rate">Win %</div></div>
+      <div class="stats-cell"><div class="stats-num" id="sStreak">0</div><div class="stats-lbl" data-i18n="stats.current_streak">Streak</div></div>
+      <div class="stats-cell"><div class="stats-num" id="sMaxStreak">0</div><div class="stats-lbl" data-i18n="stats.max_streak">Max</div></div>
+    </div>
+    <h3 style="text-align:center;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim);margin-top:18px;" data-i18n="stats.guess_distribution">Guess Distribution</h3>
+    <div class="dist" id="distEl"></div>
+    <div id="endGameSection" style="display:none;">
+      <hr style="border:none;border-top:1px solid var(--border);margin:18px 0;">
+      <div class="end-banner">
+        <div class="emoji" id="endEmoji">🎉</div>
+        <div class="word" id="endWord"></div>
+      </div>
+      <div class="share-grid" id="shareGrid"></div>
+      <div class="next-puzzle">
+        <div data-i18n="game.next_in">Next puzzle in</div>
+        <div class="time" id="nextTime">--:--:--</div>
+      </div>
+      <button class="btn" id="btnShare" data-i18n="game.share_result">Share Result</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
+    <button class="close" data-close="settingsModal">×</button>
+    <h2 data-i18n="settings.title">Settings</h2>
+    <div class="setting-row">
+      <div class="setting-label"><span class="setting-icon">🌐</span><span data-i18n="settings.language">Language</span></div>
+      <div class="setting-value">
+        <span id="langValue">English</span><span>›</span>
+        <select id="langSelect"></select>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label"><span class="setting-icon">🎨</span><span data-i18n="settings.theme">Theme</span></div>
+      <div class="setting-value">
+        <span id="themeValue">Dark</span><span>›</span>
+      </div>
+    </div>
+    <div class="themes-grid" id="themesGrid"></div>
+    <div class="setting-row">
+      <div class="setting-label"><span class="setting-icon">🔔</span><span data-i18n="settings.notifications">Daily reminder</span></div>
+      <div class="toggle" id="notifToggle"></div>
+    </div>
+    <div class="setting-row" id="notifHourRow" style="display:none;">
+      <div class="setting-label"><span class="setting-icon">⏰</span><span data-i18n="settings.notif_hour">Notification time</span></div>
+      <div class="setting-value">
+        <span id="notifHourValue">9:00</span><span>›</span>
+        <select id="notifHourSelect"></select>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label"><span class="setting-icon">💎</span><span data-i18n="settings.share_app">Share Slovo</span></div>
+      <button class="icon-btn" id="btnShareApp">↗</button>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label"><span class="setting-icon">ℹ️</span><span data-i18n="settings.howto">How to play</span></div>
+      <button class="icon-btn" id="btnHowTo">›</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shop modal -->
+<div class="modal-bg" id="shopModal">
+  <div class="modal">
+    <button class="close" data-close="shopModal">×</button>
+    <h2 data-i18n="shop.title">⭐ Shop</h2>
+    <div id="shopList"></div>
+    <div style="text-align:center;font-size:11px;color:var(--text-mute);margin-top:12px;">
+      Paid with Telegram Stars · No ads, ever
+    </div>
+  </div>
+</div>
+
+<!-- Onboarding modal -->
+<div class="modal-bg" id="onbModal">
+  <div class="modal">
+    <h2 data-i18n="onb.welcome">Welcome to Slovo!</h2>
+    <div class="onb-step">
+      <p class="onb-desc" data-i18n="onb.howto">Guess the 5-letter word in 6 tries.</p>
+      <div class="onb-tiles">
+        <div class="onb-tile green">S</div><div class="onb-tile empty">L</div><div class="onb-tile empty">O</div><div class="onb-tile empty">V</div><div class="onb-tile empty">O</div>
+      </div>
+      <p class="onb-desc" data-i18n="onb.green">Green: right letter, right spot</p>
+      <div class="onb-tiles">
+        <div class="onb-tile empty">T</div><div class="onb-tile yellow">A</div><div class="onb-tile empty">B</div><div class="onb-tile empty">L</div><div class="onb-tile empty">E</div>
+      </div>
+      <p class="onb-desc" data-i18n="onb.yellow">Yellow: right letter, wrong spot</p>
+      <div class="onb-tiles">
+        <div class="onb-tile empty">W</div><div class="onb-tile empty">O</div><div class="onb-tile gray">R</div><div class="onb-tile empty">L</div><div class="onb-tile empty">D</div>
+      </div>
+      <p class="onb-desc" data-i18n="onb.gray">Gray: not in the word</p>
+    </div>
+    <button class="btn" id="btnOnbStart" data-i18n="onb.lets_play">Let's play</button>
+  </div>
+</div>
+
+<!-- End-game inline message (under grid) -->
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+'use strict';
+
+// ============ Telegram WebApp bootstrap ============
+const TG = window.Telegram && window.Telegram.WebApp;
+const HAPTIC = TG && TG.HapticFeedback;
+if (TG) { try { TG.ready(); TG.expand(); TG.disableVerticalSwipes && TG.disableVerticalSwipes(); } catch(_){} }
+
+function haptic(kind) {
+  if (!HAPTIC) return;
+  try {
+    if (kind === 'tap')    HAPTIC.impactOccurred('light');
+    else if (kind === 'win')  HAPTIC.notificationOccurred('success');
+    else if (kind === 'lose') HAPTIC.notificationOccurred('error');
+    else if (kind === 'warn') HAPTIC.notificationOccurred('warning');
+    else if (kind === 'sel')  HAPTIC.selectionChanged();
+  } catch(_) {}
+}
+
+// ============ Supported languages ============
+const SUPPORTED_LANGS = [
+  { code: 'en', native: 'English' },
+  { code: 'ru', native: 'Русский' },
+  { code: 'uk', native: 'Українська' },
+  { code: 'es', native: 'Español' },
+  { code: 'pt', native: 'Português' },
+  { code: 'fr', native: 'Français' },
+  { code: 'de', native: 'Deutsch' },
+  { code: 'nl', native: 'Nederlands' },
+  { code: 'it', native: 'Italiano' },
+  { code: 'sv', native: 'Svenska' },
+  { code: 'pl', native: 'Polski' },
+  { code: 'tr', native: 'Türkçe' },
+  { code: 'ar', native: 'العربية', rtl: true },
+  { code: 'he', native: 'עברית',   rtl: true },
+  { code: 'hi', native: 'हिन्दी' },
+  { code: 'id', native: 'Bahasa Indonesia' },
+  { code: 'vi', native: 'Tiếng Việt' },
+  { code: 'zh', native: '中文' },
+  { code: 'ko', native: '한국어' },
+  { code: 'ja', native: '日本語' },
+];
+// Langs with a real puzzle. Others get full UI translation but puzzle
+// falls back to EN (matches server behavior).
+const PUZZLE_LANGS = new Set(['en','ru','uk','es','pt','fr','de','nl','it','sv','pl','tr']);
+
+// ============ Keyboard layouts ============
+// ENTER lives on the big green button below the message strip; only BACK
+// stays on the keyboard. This frees one slot in the bottom row.
+const KB_LATIN = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L'],
+  ['Z','X','C','V','B','N','M','BACK'],
+];
+const KB_LATIN_ES = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L','Ñ'],
+  ['Z','X','C','V','B','N','M','BACK'],
+];
+const KB_LATIN_DE = [
+  ['Q','W','E','R','T','Z','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L'],
+  ['Y','X','C','V','B','N','M','BACK'],
+];
+const KB_LATIN_FR = [
+  ['A','Z','E','R','T','Y','U','I','O','P'],
+  ['Q','S','D','F','G','H','J','K','L','M'],
+  ['W','X','C','V','B','N','BACK'],
+];
+const KB_LATIN_SV = [
+  ['Q','W','E','R','T','Y','U','I','O','P','Å'],
+  ['A','S','D','F','G','H','J','K','L','Ö','Ä'],
+  ['Z','X','C','V','B','N','M','BACK'],
+];
+const KB_LATIN_TR = [
+  ['Q','W','E','R','T','Y','U','I','O','P','Ğ','Ü'],
+  ['A','S','D','F','G','H','J','K','L','Ş','İ'],
+  ['Z','X','C','V','B','N','M','Ö','Ç','BACK'],
+];
+const KB_LATIN_PL = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L','Ł'],
+  ['Z','X','C','V','B','N','M','BACK'],
+];
+const KB_RU = [
+  ['Й','Ц','У','К','Е','Н','Г','Ш','Щ','З','Х'],
+  ['Ф','Ы','В','А','П','Р','О','Л','Д','Ж','Э'],
+  ['Я','Ч','С','М','И','Т','Ь','Б','Ю','BACK'],
+];
+const KB_UK = [
+  ['Й','Ц','У','К','Е','Н','Г','Ш','Щ','З','Х'],
+  ['Ф','І','В','А','П','Р','О','Л','Д','Ж','Є'],
+  ['Я','Ч','С','М','И','Т','Ь','Б','Ю','BACK'],
+];
+const KEYBOARDS = {
+  en: KB_LATIN, nl: KB_LATIN, it: KB_LATIN, pt: KB_LATIN_ES,
+  es: KB_LATIN_ES, de: KB_LATIN_DE, fr: KB_LATIN_FR, sv: KB_LATIN_SV,
+  tr: KB_LATIN_TR, pl: KB_LATIN_PL, ru: KB_RU, uk: KB_UK,
+  // Non-puzzle langs use EN keyboard (they're playing the English puzzle).
+  ar: KB_LATIN, he: KB_LATIN, hi: KB_LATIN, id: KB_LATIN,
+  vi: KB_LATIN, zh: KB_LATIN, ko: KB_LATIN, ja: KB_LATIN,
+};
+
+// ============ i18n dictionary ============
+// ~80 keys × 20 langs. Missing keys fall back to EN.
+const I18N = {
+  en: {
+    'app.title':'Slovo',
+    'common.close':'Close','common.cancel':'Cancel','common.continue':'Continue','common.share':'Share','common.copied':'Copied!','common.copy':'Copy',
+    'common.loading':'Loading…','common.ok':'OK','common.enter':'Enter',
+    'game.guess_n_of_6':'Guess {n} of 6','game.not_in_list':'Not in word list','game.not_enough':'Not enough letters',
+    'game.you_won':'Brilliant!','game.you_lost':'Better luck tomorrow','game.answer_was':'The word was','game.share_result':'Share Result',
+    'game.next_in':'Next puzzle in','game.hint_used':'Letter revealed','game.no_hints':'No hints left',
+    'home.play_today':"Play Today's Word",
+    'stats.title':'Statistics','stats.played':'Played','stats.win_rate':'Win %','stats.current_streak':'Streak','stats.max_streak':'Max Streak','stats.guess_distribution':'Guess Distribution',
+    'settings.title':'Settings','settings.language':'Language','settings.theme':'Theme','settings.notifications':'Daily reminder','settings.notif_hour':'Notification time','settings.share_app':'Share Slovo','settings.howto':'How to play',
+    'shop.title':'⭐ Shop','shop.purchase':'Buy','shop.owned':'Owned','shop.pro_active':'Pro active',
+    'sku.hint_pack.title':'Hint Pack · 5 Hints','sku.hint_pack.desc':'Reveal a random letter when stuck.',
+    'sku.streak_shield.title':'Streak Shield · 7 days','sku.streak_shield.desc':'Miss a day? Your streak survives.',
+    'sku.archive_unlock.title':'Archive — All Past Puzzles','sku.archive_unlock.desc':'Play every Slovo since launch.',
+    'sku.theme_pack.title':'Theme Pack · 6 themes','sku.theme_pack.desc':'Neon, Sunset, Forest, Mono, Pastel, Holiday.',
+    'sku.pro_monthly.title':'Slovo Pro · 1 month','sku.pro_monthly.desc':'Unlimited puzzles, 3 hints/day, archive, all themes.',
+    'sku.pro_yearly.title':'Slovo Pro · 1 year','sku.pro_yearly.desc':'Everything in Pro. 30% off vs monthly.',
+    'sku.gift_pro.title':'Gift Pro · 1 month','sku.gift_pro.desc':'Send a month of Pro to a friend.',
+    'onb.welcome':'Welcome to Slovo!','onb.howto':'Guess the 5-letter word in 6 tries.','onb.green':'Green: right letter, right spot','onb.yellow':'Yellow: right letter, wrong spot','onb.gray':'Gray: not in the word','onb.lets_play':"Let's play",
+    'share.text':'Slovo {day} {result}/6',
+    'theme.default':'Dark','theme.light':'Light','theme.neon':'Neon','theme.sunset':'Sunset','theme.forest':'Forest','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Holiday',
+    'err.network':'Network error. Try again.','err.try_again':'Try again',
+  },
+  ru: {
+    'common.close':'Закрыть','common.cancel':'Отмена','common.continue':'Продолжить','common.share':'Поделиться','common.copied':'Скопировано!','common.copy':'Копировать','common.loading':'Загрузка…','common.ok':'OK','common.enter':'Ввести',
+    'game.guess_n_of_6':'Попытка {n} из 6','game.not_in_list':'Нет в словаре','game.not_enough':'Недостаточно букв',
+    'game.you_won':'Великолепно!','game.you_lost':'Завтра повезёт','game.answer_was':'Слово было','game.share_result':'Поделиться',
+    'game.next_in':'Следующее через','game.hint_used':'Буква открыта','game.no_hints':'Подсказок нет',
+    'home.play_today':'Сегодняшнее слово',
+    'stats.title':'Статистика','stats.played':'Сыграно','stats.win_rate':'% побед','stats.current_streak':'Серия','stats.max_streak':'Максимум','stats.guess_distribution':'Распределение попыток',
+    'settings.title':'Настройки','settings.language':'Язык','settings.theme':'Тема','settings.notifications':'Ежедневное напоминание','settings.notif_hour':'Время напоминания','settings.share_app':'Поделиться Slovo','settings.howto':'Как играть',
+    'shop.title':'⭐ Магазин','shop.purchase':'Купить','shop.owned':'Куплено','shop.pro_active':'Pro активен',
+    'sku.hint_pack.title':'Подсказки · 5 шт','sku.hint_pack.desc':'Открой случайную букву.',
+    'sku.streak_shield.title':'Щит серии · 7 дней','sku.streak_shield.desc':'Пропустил день? Серия сохранится.',
+    'sku.archive_unlock.title':'Архив всех слов','sku.archive_unlock.desc':'Все Slovo с момента запуска.',
+    'sku.theme_pack.title':'6 премиум-тем','sku.theme_pack.desc':'Неон, Закат, Лес, Моно, Пастель, Праздник.',
+    'sku.pro_monthly.title':'Slovo Pro · месяц','sku.pro_monthly.desc':'Безлимит, 3 подсказки/день, архив, все темы.',
+    'sku.pro_yearly.title':'Slovo Pro · год','sku.pro_yearly.desc':'Всё из Pro. Скидка 30%.',
+    'sku.gift_pro.title':'Подарок Pro · 1 месяц','sku.gift_pro.desc':'Подари другу месяц Pro.',
+    'onb.welcome':'Добро пожаловать в Slovo!','onb.howto':'Угадайте слово из 5 букв за 6 попыток.','onb.green':'Зелёный: буква на своём месте','onb.yellow':'Жёлтый: буква есть, но не там','onb.gray':'Серый: буквы нет в слове','onb.lets_play':'Поехали',
+    'share.text':'Slovo {day} {result}/6',
+    'theme.default':'Тёмная','theme.light':'Светлая','theme.neon':'Неон','theme.sunset':'Закат','theme.forest':'Лес','theme.mono':'Моно','theme.pastel':'Пастель','theme.holiday':'Праздник',
+    'err.network':'Ошибка сети. Попробуйте снова.','err.try_again':'Повторить',
+  },
+  uk: {
+    'common.close':'Закрити','common.cancel':'Скасувати','common.continue':'Продовжити','common.share':'Поділитися','common.copied':'Скопійовано!','common.copy':'Копіювати','common.loading':'Завантаження…','common.ok':'OK',
+    'game.guess_n_of_6':'Спроба {n} з 6','game.not_in_list':'Немає у словнику','game.not_enough':'Недостатньо літер',
+    'game.you_won':'Чудово!','game.you_lost':'Завтра пощастить','game.answer_was':'Слово було','game.share_result':'Поділитися',
+    'game.next_in':'Наступне через','game.hint_used':'Літера відкрита','game.no_hints':'Підказок немає',
+    'home.play_today':'Сьогоднішнє слово',
+    'stats.title':'Статистика','stats.played':'Зіграно','stats.win_rate':'% перемог','stats.current_streak':'Серія','stats.max_streak':'Максимум','stats.guess_distribution':'Розподіл спроб',
+    'settings.title':'Налаштування','settings.language':'Мова','settings.theme':'Тема','settings.notifications':'Щоденне нагадування','settings.notif_hour':'Час нагадування','settings.share_app':'Поділитися Slovo','settings.howto':'Як грати',
+    'shop.title':'⭐ Магазин','shop.purchase':'Купити','shop.owned':'Придбано','shop.pro_active':'Pro активний',
+    'sku.hint_pack.title':'Підказки · 5 шт','sku.hint_pack.desc':'Відкрийте випадкову літеру.',
+    'sku.streak_shield.title':'Щит серії · 7 днів','sku.streak_shield.desc':'Пропустили день? Серія збережеться.',
+    'sku.archive_unlock.title':'Архів усіх слів','sku.archive_unlock.desc':'Усі Slovo з моменту запуску.',
+    'sku.theme_pack.title':'6 преміум-тем','sku.theme_pack.desc':'Неон, Захід, Ліс, Моно, Пастель, Свято.',
+    'sku.pro_monthly.title':'Slovo Pro · місяць','sku.pro_monthly.desc':'Безліміт, 3 підказки/день, архів, усі теми.',
+    'sku.pro_yearly.title':'Slovo Pro · рік','sku.pro_yearly.desc':'Усе з Pro. Знижка 30%.',
+    'sku.gift_pro.title':'Подарунок Pro · 1 місяць','sku.gift_pro.desc':'Подаруй другу місяць Pro.',
+    'onb.welcome':'Ласкаво просимо до Slovo!','onb.howto':'Вгадайте слово з 5 літер за 6 спроб.','onb.green':'Зелений: літера на своєму місці','onb.yellow':'Жовтий: літера є, але не там','onb.gray':'Сірий: літери немає у слові','onb.lets_play':'Поїхали',
+    'share.text':'Slovo {day} {result}/6',
+    'theme.default':'Темна','theme.light':'Світла','theme.neon':'Неон','theme.sunset':'Захід','theme.forest':'Ліс','theme.mono':'Моно','theme.pastel':'Пастель','theme.holiday':'Свято',
+    'err.network':'Помилка мережі. Спробуйте знову.','err.try_again':'Повторити',
+  },
+  es: {
+    'common.close':'Cerrar','common.cancel':'Cancelar','common.continue':'Continuar','common.share':'Compartir','common.copied':'¡Copiado!','common.copy':'Copiar','common.loading':'Cargando…','common.ok':'OK',
+    'game.guess_n_of_6':'Intento {n} de 6','game.not_in_list':'Palabra no válida','game.not_enough':'Faltan letras',
+    'game.you_won':'¡Brillante!','game.you_lost':'Mejor suerte mañana','game.answer_was':'La palabra era','game.share_result':'Compartir',
+    'game.next_in':'Próxima palabra en','game.hint_used':'Letra revelada','game.no_hints':'Sin pistas',
+    'home.play_today':'Jugar palabra de hoy',
+    'stats.title':'Estadísticas','stats.played':'Jugadas','stats.win_rate':'% Victorias','stats.current_streak':'Racha','stats.max_streak':'Máxima','stats.guess_distribution':'Distribución',
+    'settings.title':'Ajustes','settings.language':'Idioma','settings.theme':'Tema','settings.notifications':'Recordatorio diario','settings.notif_hour':'Hora del recordatorio','settings.share_app':'Compartir Slovo','settings.howto':'Cómo jugar',
+    'shop.title':'⭐ Tienda','shop.purchase':'Comprar','shop.owned':'Adquirido','shop.pro_active':'Pro activo',
+    'onb.welcome':'¡Bienvenido a Slovo!','onb.howto':'Adivina la palabra de 5 letras en 6 intentos.','onb.green':'Verde: letra correcta, lugar correcto','onb.yellow':'Amarillo: letra correcta, lugar incorrecto','onb.gray':'Gris: letra no está en la palabra','onb.lets_play':'A jugar',
+    'share.text':'Slovo {day} {result}/6',
+    'theme.default':'Oscuro','theme.light':'Claro','theme.neon':'Neón','theme.sunset':'Atardecer','theme.forest':'Bosque','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Fiesta',
+  },
+  pt: {
+    'common.close':'Fechar','common.cancel':'Cancelar','common.continue':'Continuar','common.share':'Partilhar','common.copied':'Copiado!','common.copy':'Copiar','common.loading':'A carregar…','common.ok':'OK',
+    'game.guess_n_of_6':'Tentativa {n} de 6','game.not_in_list':'Palavra não válida','game.not_enough':'Faltam letras',
+    'game.you_won':'Brilhante!','game.you_lost':'Mais sorte amanhã','game.answer_was':'A palavra era','game.share_result':'Partilhar',
+    'game.next_in':'Próxima palavra em','game.hint_used':'Letra revelada','game.no_hints':'Sem dicas',
+    'home.play_today':'Jogar palavra de hoje',
+    'stats.title':'Estatísticas','stats.played':'Jogadas','stats.win_rate':'% Vitórias','stats.current_streak':'Sequência','stats.max_streak':'Máxima','stats.guess_distribution':'Distribuição',
+    'settings.title':'Definições','settings.language':'Idioma','settings.theme':'Tema','settings.notifications':'Lembrete diário','settings.notif_hour':'Hora do lembrete','settings.share_app':'Partilhar Slovo','settings.howto':'Como jogar',
+    'shop.title':'⭐ Loja','shop.purchase':'Comprar','shop.owned':'Adquirido','shop.pro_active':'Pro ativo',
+    'onb.welcome':'Bem-vindo ao Slovo!','onb.howto':'Adivinha a palavra de 5 letras em 6 tentativas.','onb.green':'Verde: letra certa, lugar certo','onb.yellow':'Amarelo: letra certa, lugar errado','onb.gray':'Cinzento: letra não está na palavra','onb.lets_play':'Vamos jogar',
+    'share.text':'Slovo {day} {result}/6',
+    'theme.default':'Escuro','theme.light':'Claro','theme.neon':'Neon','theme.sunset':'Pôr-do-sol','theme.forest':'Floresta','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Festa',
+  },
+  fr: {
+    'common.close':'Fermer','common.cancel':'Annuler','common.continue':'Continuer','common.share':'Partager','common.copied':'Copié !','common.copy':'Copier','common.loading':'Chargement…','common.ok':'OK',
+    'game.guess_n_of_6':'Essai {n} sur 6','game.not_in_list':'Mot non reconnu','game.not_enough':'Pas assez de lettres',
+    'game.you_won':'Brillant !','game.you_lost':'À demain pour réessayer','game.answer_was':'Le mot était','game.share_result':'Partager',
+    'game.next_in':'Prochain mot dans','game.hint_used':'Lettre révélée','game.no_hints':'Plus d\'indices',
+    'home.play_today':"Jouer le mot du jour",
+    'stats.title':'Statistiques','stats.played':'Parties','stats.win_rate':'% Victoires','stats.current_streak':'Série','stats.max_streak':'Record','stats.guess_distribution':'Répartition',
+    'settings.title':'Paramètres','settings.language':'Langue','settings.theme':'Thème','settings.notifications':'Rappel quotidien','settings.notif_hour':'Heure du rappel','settings.share_app':'Partager Slovo','settings.howto':'Comment jouer',
+    'shop.title':'⭐ Boutique','shop.purchase':'Acheter','shop.owned':'Acquis','shop.pro_active':'Pro actif',
+    'onb.welcome':'Bienvenue dans Slovo !','onb.howto':'Devinez le mot de 5 lettres en 6 essais.','onb.green':'Vert : bonne lettre, bonne place','onb.yellow':'Jaune : bonne lettre, mauvaise place','onb.gray':'Gris : lettre absente du mot','onb.lets_play':'Jouer',
+    'share.text':'Slovo {day} {result}/6',
+    'theme.default':'Sombre','theme.light':'Clair','theme.neon':'Néon','theme.sunset':'Crépuscule','theme.forest':'Forêt','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Fête',
+  },
+  de: {
+    'common.close':'Schließen','common.cancel':'Abbrechen','common.continue':'Weiter','common.share':'Teilen','common.copied':'Kopiert!','common.copy':'Kopieren','common.loading':'Lädt…','common.ok':'OK',
+    'game.guess_n_of_6':'Versuch {n} von 6','game.not_in_list':'Kein gültiges Wort','game.not_enough':'Nicht genug Buchstaben',
+    'game.you_won':'Großartig!','game.you_lost':'Morgen mehr Glück','game.answer_was':'Das Wort war','game.share_result':'Teilen',
+    'game.next_in':'Nächstes Rätsel in','game.hint_used':'Buchstabe enthüllt','game.no_hints':'Keine Tipps mehr',
+    'home.play_today':'Heutiges Wort spielen',
+    'stats.title':'Statistik','stats.played':'Gespielt','stats.win_rate':'Siegquote','stats.current_streak':'Serie','stats.max_streak':'Rekord','stats.guess_distribution':'Verteilung',
+    'settings.title':'Einstellungen','settings.language':'Sprache','settings.theme':'Design','settings.notifications':'Tägliche Erinnerung','settings.notif_hour':'Erinnerungszeit','settings.share_app':'Slovo teilen','settings.howto':'Spielanleitung',
+    'shop.title':'⭐ Shop','shop.purchase':'Kaufen','shop.owned':'Erworben','shop.pro_active':'Pro aktiv',
+    'onb.welcome':'Willkommen bei Slovo!','onb.howto':'Errate das 5-Buchstaben-Wort in 6 Versuchen.','onb.green':'Grün: richtig + richtige Position','onb.yellow':'Gelb: richtig, falsche Position','onb.gray':'Grau: Buchstabe nicht im Wort','onb.lets_play':'Los geht\'s',
+    'share.text':'Slovo {day} {result}/6',
+    'theme.default':'Dunkel','theme.light':'Hell','theme.neon':'Neon','theme.sunset':'Sonnenuntergang','theme.forest':'Wald','theme.mono':'Mono','theme.pastel':'Pastell','theme.holiday':'Feiertag',
+  },
+  it: {
+    'common.close':'Chiudi','common.cancel':'Annulla','common.continue':'Continua','common.share':'Condividi','common.copied':'Copiato!','common.copy':'Copia','common.loading':'Caricamento…','common.ok':'OK',
+    'game.guess_n_of_6':'Tentativo {n} di 6','game.not_in_list':'Parola non valida','game.not_enough':'Lettere mancanti',
+    'game.you_won':'Fantastico!','game.you_lost':'Riprova domani','game.answer_was':'La parola era','game.share_result':'Condividi',
+    'game.next_in':'Prossima parola tra','game.hint_used':'Lettera rivelata','game.no_hints':'Niente suggerimenti',
+    'home.play_today':"Gioca la parola di oggi",
+    'stats.title':'Statistiche','stats.played':'Giocate','stats.win_rate':'% Vittorie','stats.current_streak':'Serie','stats.max_streak':'Record','stats.guess_distribution':'Distribuzione',
+    'settings.title':'Impostazioni','settings.language':'Lingua','settings.theme':'Tema','settings.notifications':'Promemoria quotidiano','settings.notif_hour':'Orario promemoria','settings.share_app':'Condividi Slovo','settings.howto':'Come si gioca',
+    'shop.title':'⭐ Negozio','shop.purchase':'Acquista','shop.owned':'Acquistato','shop.pro_active':'Pro attivo',
+    'onb.welcome':'Benvenuto in Slovo!','onb.howto':'Indovina la parola di 5 lettere in 6 tentativi.','onb.green':'Verde: lettera giusta, posto giusto','onb.yellow':'Giallo: lettera giusta, posto sbagliato','onb.gray':'Grigio: lettera assente','onb.lets_play':'Si gioca',
+    'share.text':'Slovo {day} {result}/6',
+    'theme.default':'Scuro','theme.light':'Chiaro','theme.neon':'Neon','theme.sunset':'Tramonto','theme.forest':'Foresta','theme.mono':'Mono','theme.pastel':'Pastello','theme.holiday':'Festa',
+  },
+  nl: {
+    'common.close':'Sluiten','common.cancel':'Annuleren','common.continue':'Doorgaan','common.share':'Delen','common.copied':'Gekopieerd!','common.copy':'Kopiëren','common.loading':'Laden…','common.ok':'OK',
+    'game.guess_n_of_6':'Poging {n} van 6','game.not_in_list':'Geen geldig woord','game.not_enough':'Te weinig letters',
+    'game.you_won':'Geweldig!','game.you_lost':'Beter geluk morgen','game.answer_was':'Het woord was','game.share_result':'Deel resultaat',
+    'game.next_in':'Volgend woord over','game.hint_used':'Letter onthuld','game.no_hints':'Geen hints',
+    'home.play_today':'Speel woord van vandaag',
+    'stats.title':'Statistieken','stats.played':'Gespeeld','stats.win_rate':'% Gewonnen','stats.current_streak':'Reeks','stats.max_streak':'Record','stats.guess_distribution':'Verdeling',
+    'settings.title':'Instellingen','settings.language':'Taal','settings.theme':'Thema','settings.notifications':'Dagelijkse herinnering','settings.notif_hour':'Herinneringstijd','settings.share_app':'Slovo delen','settings.howto':'Hoe te spelen',
+    'shop.title':'⭐ Winkel','shop.purchase':'Kopen','shop.owned':'Gekocht','shop.pro_active':'Pro actief',
+    'onb.welcome':'Welkom bij Slovo!','onb.howto':'Raad het 5-letterwoord in 6 pogingen.','onb.green':'Groen: juiste letter, juiste plek','onb.yellow':'Geel: juiste letter, verkeerde plek','onb.gray':'Grijs: letter niet in woord','onb.lets_play':'Spelen',
+    'share.text':'Slovo {day} {result}/6',
+    'theme.default':'Donker','theme.light':'Licht','theme.neon':'Neon','theme.sunset':'Zonsondergang','theme.forest':'Bos','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Feest',
+  },
+  sv: {
+    'common.close':'Stäng','common.cancel':'Avbryt','common.continue':'Fortsätt','common.share':'Dela','common.copied':'Kopierat!','common.copy':'Kopiera','common.loading':'Laddar…','common.ok':'OK',
+    'game.guess_n_of_6':'Gissning {n} av 6','game.not_in_list':'Inget giltigt ord','game.not_enough':'För få bokstäver',
+    'game.you_won':'Briljant!','game.you_lost':'Bättre lycka imorgon','game.answer_was':'Ordet var','game.share_result':'Dela',
+    'game.next_in':'Nästa ord om','game.hint_used':'Bokstav avslöjad','game.no_hints':'Inga tips kvar',
+    'home.play_today':'Spela dagens ord',
+    'stats.title':'Statistik','stats.played':'Spelade','stats.win_rate':'Vinst-%','stats.current_streak':'Serie','stats.max_streak':'Rekord','stats.guess_distribution':'Fördelning',
+    'settings.title':'Inställningar','settings.language':'Språk','settings.theme':'Tema','settings.notifications':'Daglig påminnelse','settings.notif_hour':'Påminnelsetid','settings.share_app':'Dela Slovo','settings.howto':'Hur man spelar',
+    'shop.title':'⭐ Butik','shop.purchase':'Köp','shop.owned':'Köpt','shop.pro_active':'Pro aktiv',
+    'onb.welcome':'Välkommen till Slovo!','onb.howto':'Gissa 5-bokstavsordet på 6 försök.','onb.green':'Grön: rätt bokstav, rätt plats','onb.yellow':'Gul: rätt bokstav, fel plats','onb.gray':'Grå: bokstaven finns inte','onb.lets_play':'Spela',
+    'share.text':'Slovo {day} {result}/6',
+    'theme.default':'Mörk','theme.light':'Ljus','theme.neon':'Neon','theme.sunset':'Solnedgång','theme.forest':'Skog','theme.mono':'Mono','theme.pastel':'Pastell','theme.holiday':'Helg',
+  },
+  pl: {
+    'common.close':'Zamknij','common.cancel':'Anuluj','common.continue':'Dalej','common.share':'Udostępnij','common.copied':'Skopiowano!','common.copy':'Kopiuj','common.loading':'Ładowanie…','common.ok':'OK',
+    'game.guess_n_of_6':'Próba {n} z 6','game.not_in_list':'Brak w słowniku','game.not_enough':'Za mało liter',
+    'game.you_won':'Świetnie!','game.you_lost':'Spróbuj jutro','game.answer_was':'Słowo to','game.share_result':'Udostępnij',
+    'game.next_in':'Następne słowo za','game.hint_used':'Litera odkryta','game.no_hints':'Brak podpowiedzi',
+    'home.play_today':'Zagraj słowo dnia',
+    'stats.title':'Statystyki','stats.played':'Rozegrane','stats.win_rate':'% Wygranych','stats.current_streak':'Seria','stats.max_streak':'Rekord','stats.guess_distribution':'Rozkład',
+    'settings.title':'Ustawienia','settings.language':'Język','settings.theme':'Motyw','settings.notifications':'Codzienne przypomnienie','settings.notif_hour':'Godzina przypomnienia','settings.share_app':'Udostępnij Slovo','settings.howto':'Jak grać',
+    'shop.title':'⭐ Sklep','shop.purchase':'Kup','shop.owned':'Kupiono','shop.pro_active':'Pro aktywne',
+    'onb.welcome':'Witaj w Slovo!','onb.howto':'Zgadnij 5-literowe słowo w 6 próbach.','onb.green':'Zielony: litera + miejsce','onb.yellow':'Żółty: litera, złe miejsce','onb.gray':'Szary: brak litery','onb.lets_play':'Gramy',
+    'share.text':'Slovo {day} {result}/6',
+    'theme.default':'Ciemny','theme.light':'Jasny','theme.neon':'Neon','theme.sunset':'Zachód','theme.forest':'Las','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Święto',
+  },
+  tr: {
+    'common.close':'Kapat','common.cancel':'İptal','common.continue':'Devam','common.share':'Paylaş','common.copied':'Kopyalandı!','common.copy':'Kopyala','common.loading':'Yükleniyor…','common.ok':'TAMAM',
+    'game.guess_n_of_6':'Tahmin {n}/6','game.not_in_list':'Geçersiz kelime','game.not_enough':'Eksik harf',
+    'game.you_won':'Harika!','game.you_lost':'Yarın bol şans','game.answer_was':'Kelime şuydu','game.share_result':'Paylaş',
+    'game.next_in':'Sonraki kelime','game.hint_used':'Harf açıldı','game.no_hints':'İpucu yok',
+    'home.play_today':'Bugünün kelimesini oyna',
+    'stats.title':'İstatistik','stats.played':'Oynanan','stats.win_rate':'% Kazanma','stats.current_streak':'Seri','stats.max_streak':'Rekor','stats.guess_distribution':'Dağılım',
+    'settings.title':'Ayarlar','settings.language':'Dil','settings.theme':'Tema','settings.notifications':'Günlük hatırlatma','settings.notif_hour':'Hatırlatma saati','settings.share_app':'Slovo\'yu paylaş','settings.howto':'Nasıl oynanır',
+    'shop.title':'⭐ Mağaza','shop.purchase':'Satın al','shop.owned':'Sahip','shop.pro_active':'Pro aktif',
+    'onb.welcome':'Slovo\'ya hoş geldin!','onb.howto':'5 harfli kelimeyi 6 denemede bul.','onb.green':'Yeşil: doğru harf, doğru yer','onb.yellow':'Sarı: doğru harf, yanlış yer','onb.gray':'Gri: harf yok','onb.lets_play':'Hadi başla',
+    'share.text':'Slovo {day} {result}/6',
+    'theme.default':'Koyu','theme.light':'Açık','theme.neon':'Neon','theme.sunset':'Günbatımı','theme.forest':'Orman','theme.mono':'Mono','theme.pastel':'Pastel','theme.holiday':'Tatil',
+  },
+  ar: {
+    'common.close':'إغلاق','common.cancel':'إلغاء','common.share':'مشاركة','common.copied':'تم النسخ!','common.loading':'جار التحميل…','common.ok':'موافق',
+    'game.you_won':'رائع!','game.you_lost':'حظ أوفر غدًا','game.answer_was':'الكلمة كانت','game.share_result':'شارك النتيجة','game.next_in':'الكلمة التالية خلال',
+    'home.play_today':'العب كلمة اليوم',
+    'stats.title':'الإحصائيات','stats.played':'لُعبت','stats.win_rate':'٪ الفوز','stats.current_streak':'سلسلة','stats.max_streak':'أعلى',
+    'settings.title':'الإعدادات','settings.language':'اللغة','settings.theme':'الموضوع','settings.notifications':'تذكير يومي',
+    'shop.title':'⭐ المتجر','shop.purchase':'شراء','shop.owned':'مملوك',
+    'onb.welcome':'أهلاً بك في Slovo!','onb.howto':'احزر كلمة من ٥ حروف في ٦ محاولات.','onb.green':'أخضر: حرف صحيح ومكانه صحيح','onb.yellow':'أصفر: حرف صحيح، مكان خطأ','onb.gray':'رمادي: الحرف غير موجود','onb.lets_play':'لنلعب',
+    'share.text':'Slovo {day} {result}/6',
+  },
+  he: {
+    'common.close':'סגור','common.cancel':'בטל','common.share':'שתף','common.copied':'הועתק!','common.loading':'טוען…','common.ok':'אישור',
+    'game.you_won':'מבריק!','game.you_lost':'בהצלחה מחר','game.answer_was':'המילה הייתה','game.share_result':'שתף תוצאה','game.next_in':'המילה הבאה בעוד',
+    'home.play_today':'שחק במילה של היום',
+    'stats.title':'סטטיסטיקה','stats.played':'משחקים','stats.win_rate':'% ניצחונות','stats.current_streak':'רצף','stats.max_streak':'שיא',
+    'settings.title':'הגדרות','settings.language':'שפה','settings.theme':'ערכת נושא','settings.notifications':'תזכורת יומית',
+    'shop.title':'⭐ חנות','shop.purchase':'קנה','shop.owned':'נרכש',
+    'onb.welcome':'ברוך הבא ל-Slovo!','onb.howto':'נחש מילה בת 5 אותיות ב-6 ניסיונות.','onb.green':'ירוק: אות נכונה במקום הנכון','onb.yellow':'צהוב: אות נכונה, מקום שגוי','onb.gray':'אפור: האות לא במילה','onb.lets_play':'משחקים',
+    'share.text':'Slovo {day} {result}/6',
+  },
+  hi: {
+    'common.close':'बंद करें','common.cancel':'रद्द','common.share':'शेयर','common.copied':'कॉपी हो गया!','common.loading':'लोड हो रहा है…','common.ok':'ठीक',
+    'game.you_won':'शानदार!','game.you_lost':'कल फिर कोशिश करें','game.answer_was':'शब्द था','game.share_result':'परिणाम शेयर करें','game.next_in':'अगला शब्द',
+    'home.play_today':'आज का शब्द खेलें',
+    'stats.title':'आँकड़े','stats.played':'खेले','stats.win_rate':'जीत %','stats.current_streak':'श्रृंखला','stats.max_streak':'सर्वाधिक',
+    'settings.title':'सेटिंग्स','settings.language':'भाषा','settings.theme':'थीम','settings.notifications':'दैनिक रिमाइंडर',
+    'shop.title':'⭐ दुकान','shop.purchase':'खरीदें','shop.owned':'खरीदा गया',
+    'onb.welcome':'Slovo में आपका स्वागत है!','onb.howto':'6 कोशिशों में 5 अक्षरों का शब्द पहचानें।','onb.green':'हरा: सही अक्षर, सही जगह','onb.yellow':'पीला: सही अक्षर, गलत जगह','onb.gray':'ग्रे: अक्षर शब्द में नहीं','onb.lets_play':'चलो खेलें',
+    'share.text':'Slovo {day} {result}/6',
+  },
+  id: {
+    'common.close':'Tutup','common.cancel':'Batal','common.share':'Bagikan','common.copied':'Disalin!','common.loading':'Memuat…','common.ok':'OK',
+    'game.you_won':'Hebat!','game.you_lost':'Coba lagi besok','game.answer_was':'Kata-nya adalah','game.share_result':'Bagikan hasil','game.next_in':'Kata berikutnya dalam',
+    'home.play_today':'Mainkan kata hari ini',
+    'stats.title':'Statistik','stats.played':'Dimainkan','stats.win_rate':'% Menang','stats.current_streak':'Beruntun','stats.max_streak':'Rekor',
+    'settings.title':'Pengaturan','settings.language':'Bahasa','settings.theme':'Tema','settings.notifications':'Pengingat harian',
+    'shop.title':'⭐ Toko','shop.purchase':'Beli','shop.owned':'Dimiliki',
+    'onb.welcome':'Selamat datang di Slovo!','onb.howto':'Tebak kata 5 huruf dalam 6 percobaan.','onb.green':'Hijau: huruf benar, posisi benar','onb.yellow':'Kuning: huruf benar, posisi salah','onb.gray':'Abu-abu: huruf tidak ada','onb.lets_play':'Ayo main',
+    'share.text':'Slovo {day} {result}/6',
+  },
+  vi: {
+    'common.close':'Đóng','common.cancel':'Hủy','common.share':'Chia sẻ','common.copied':'Đã sao chép!','common.loading':'Đang tải…','common.ok':'OK',
+    'game.you_won':'Tuyệt vời!','game.you_lost':'May mắn hơn ngày mai','game.answer_was':'Từ là','game.share_result':'Chia sẻ','game.next_in':'Từ tiếp theo sau',
+    'home.play_today':'Chơi từ hôm nay',
+    'stats.title':'Thống kê','stats.played':'Đã chơi','stats.win_rate':'% Thắng','stats.current_streak':'Chuỗi','stats.max_streak':'Kỷ lục',
+    'settings.title':'Cài đặt','settings.language':'Ngôn ngữ','settings.theme':'Chủ đề','settings.notifications':'Nhắc nhở hàng ngày',
+    'shop.title':'⭐ Cửa hàng','shop.purchase':'Mua','shop.owned':'Đã mua',
+    'onb.welcome':'Chào mừng đến với Slovo!','onb.howto':'Đoán từ 5 chữ trong 6 lượt.','onb.green':'Xanh: đúng chữ, đúng vị trí','onb.yellow':'Vàng: đúng chữ, sai vị trí','onb.gray':'Xám: không có trong từ','onb.lets_play':'Chơi nào',
+    'share.text':'Slovo {day} {result}/6',
+  },
+  zh: {
+    'common.close':'关闭','common.cancel':'取消','common.share':'分享','common.copied':'已复制!','common.loading':'加载中…','common.ok':'确定',
+    'game.you_won':'太棒了!','game.you_lost':'明天再来','game.answer_was':'答案是','game.share_result':'分享结果','game.next_in':'下个词',
+    'home.play_today':'今日单词',
+    'stats.title':'统计','stats.played':'已玩','stats.win_rate':'胜率','stats.current_streak':'连胜','stats.max_streak':'最高',
+    'settings.title':'设置','settings.language':'语言','settings.theme':'主题','settings.notifications':'每日提醒',
+    'shop.title':'⭐ 商店','shop.purchase':'购买','shop.owned':'已拥有',
+    'onb.welcome':'欢迎来到 Slovo!','onb.howto':'6 次内猜出 5 字母单词。','onb.green':'绿色：字母位置正确','onb.yellow':'黄色：字母存在但位置错误','onb.gray':'灰色：字母不在词中','onb.lets_play':'开始游戏',
+    'share.text':'Slovo {day} {result}/6',
+  },
+  ko: {
+    'common.close':'닫기','common.cancel':'취소','common.share':'공유','common.copied':'복사됨!','common.loading':'로딩 중…','common.ok':'확인',
+    'game.you_won':'대단해요!','game.you_lost':'내일 다시 도전','game.answer_was':'정답은','game.share_result':'결과 공유','game.next_in':'다음 퍼즐까지',
+    'home.play_today':'오늘의 단어 플레이',
+    'stats.title':'통계','stats.played':'플레이','stats.win_rate':'승률','stats.current_streak':'연속','stats.max_streak':'최고',
+    'settings.title':'설정','settings.language':'언어','settings.theme':'테마','settings.notifications':'매일 알림',
+    'shop.title':'⭐ 상점','shop.purchase':'구매','shop.owned':'보유',
+    'onb.welcome':'Slovo에 오신 것을 환영합니다!','onb.howto':'6번 안에 5글자 단어를 맞춰보세요.','onb.green':'녹색: 위치도 맞음','onb.yellow':'노란색: 글자는 맞으나 위치는 틀림','onb.gray':'회색: 단어에 없음','onb.lets_play':'시작',
+    'share.text':'Slovo {day} {result}/6',
+  },
+  ja: {
+    'common.close':'閉じる','common.cancel':'キャンセル','common.share':'シェア','common.copied':'コピー済み!','common.loading':'読み込み中…','common.ok':'OK',
+    'game.you_won':'素晴らしい!','game.you_lost':'また明日','game.answer_was':'答えは','game.share_result':'結果をシェア','game.next_in':'次の問題まで',
+    'home.play_today':'今日の単語をプレイ',
+    'stats.title':'統計','stats.played':'プレイ回数','stats.win_rate':'勝率','stats.current_streak':'連続','stats.max_streak':'最高',
+    'settings.title':'設定','settings.language':'言語','settings.theme':'テーマ','settings.notifications':'毎日のリマインド',
+    'shop.title':'⭐ ショップ','shop.purchase':'購入','shop.owned':'購入済み',
+    'onb.welcome':'Slovoへようこそ!','onb.howto':'6回以内に5文字の単語を当てよう。','onb.green':'緑：文字も位置も正解','onb.yellow':'黄：文字は正解、位置は違う','onb.gray':'灰：その文字はない','onb.lets_play':'始める',
+    'share.text':'Slovo {day} {result}/6',
+  },
+};
+
+let currentLang = 'en';
+function t(key, vars) {
+  const dict = I18N[currentLang] || {};
+  let s = dict[key] || I18N.en[key] || key;
+  if (vars) for (const k in vars) s = s.replace('{' + k + '}', vars[k]);
+  return s;
+}
+function localize() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    el.textContent = t(k);
+  });
+  document.documentElement.lang = currentLang;
+  document.documentElement.dir = ((SUPPORTED_LANGS.find(l => l.code === currentLang) || {}).rtl) ? 'rtl' : 'ltr';
+}
+
+function detectInitialLang() {
+  // 1) explicit save
+  const saved = localStorage.getItem('slovo.lang');
+  if (saved && I18N[saved]) return saved;
+  // 2) Telegram user lang
+  const tgLang = TG && TG.initDataUnsafe && TG.initDataUnsafe.user && TG.initDataUnsafe.user.language_code;
+  if (tgLang && I18N[tgLang]) return tgLang;
+  // 3) browser
+  const bLang = (navigator.language || 'en').slice(0,2).toLowerCase();
+  if (I18N[bLang]) return bLang;
+  return 'en';
+}
+
+// ============ Theme ============
+const THEMES = [
+  { id: 'default', free: true,  palette: ['#0f1117','#538d4e','#b59f3b','#f4f5f7'] },
+  { id: 'light',   free: true,  palette: ['#ffffff','#6aaa64','#c9b458','#1a1d24'] },
+  { id: 'neon',    free: false, palette: ['#0a0014','#00ff9d','#ffd43b','#f9e6ff'] },
+  { id: 'sunset',  free: false, palette: ['#1f0d23','#ff6b35','#ffc857','#ffeed6'] },
+  { id: 'forest',  free: false, palette: ['#0d1c14','#8fcb9b','#d4b14e','#ebf5e7'] },
+  { id: 'mono',    free: false, palette: ['#ffffff','#111','#888','#000'] },
+  { id: 'pastel',  free: false, palette: ['#fdf6f9','#99c1a1','#f5d27a','#3b2435'] },
+  { id: 'holiday', free: false, palette: ['#0c1f12','#2eb872','#ffdd00','#fff5e1'] },
+];
+function applyTheme(themeId) {
+  document.body.setAttribute('data-theme', themeId);
+  localStorage.setItem('slovo.theme', themeId);
+}
+
+// ============ Game state ============
+const WORD_LEN = 5;
+const MAX_GUESSES = 6;
+const state = {
+  lang: 'en',
+  dayIdx: 0,
+  today: 0,
+  guesses: [],   // array of typed strings ['STARE','TODAY',...]
+  patterns: [],  // array of 'GY---' strings (same length as guesses)
+  current: '',   // current row being typed
+  finished: false,
+  result: null,  // 'won' | 'lost'
+  answer: null,  // revealed at end
+  busy: false,
+  me: null,
+  skus: [],
+};
+
+// ============ API ============
+const API_BASE = '';
+async function api(path, body) {
+  const init = { initData: (TG && TG.initData) || '', dev_uid: localStorage.getItem('slovo.devUid') || undefined };
+  const r = await fetch(API_BASE + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign(init, body || {})),
+  });
+  let json = null;
+  try { json = await r.json(); } catch(_) { json = { error: 'bad json' }; }
+  return { ok: r.ok, status: r.status, body: json };
+}
+
+// ============ Toast / message strip ============
+let toastTimer = null;
+function toast(text, kind) {
+  const el = document.getElementById('toast');
+  el.textContent = text;
+  el.className = 'toast show' + (kind === 'error' ? ' error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.classList.remove('show'); }, 1500);
+}
+function msg(text) {
+  document.getElementById('msgStrip').textContent = text || '';
+}
+
+// ============ Rendering ============
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  for (let r = 0; r < MAX_GUESSES; r++) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.dataset.row = r;
+    for (let c = 0; c < WORD_LEN; c++) {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.dataset.row = r;
+      tile.dataset.col = c;
+      // Existing guess
+      if (r < state.guesses.length) {
+        tile.textContent = state.guesses[r][c] || '';
+        tile.classList.add('revealed');
+        tile.dataset.color = state.patterns[r][c];
+      } else if (r === state.guesses.length) {
+        // Current row
+        tile.textContent = state.current[c] || '';
+        if (state.current[c]) tile.classList.add('typed');
+      }
+      row.appendChild(tile);
+    }
+    grid.appendChild(row);
+  }
+}
+
+function renderKeyboard() {
+  const kb = document.getElementById('kb');
+  kb.innerHTML = '';
+  const layout = KEYBOARDS[state.lang] || KB_LATIN;
+  // Per-key best-known color from all patterns. Priority: G > Y > -.
+  const keyColors = {};
+  for (let i = 0; i < state.guesses.length; i++) {
+    const g = state.guesses[i], p = state.patterns[i];
+    for (let j = 0; j < g.length; j++) {
+      const ch = g[j].toUpperCase();
+      const c = p[j];
+      const cur = keyColors[ch];
+      if (cur === 'G') continue;
+      if (cur === 'Y' && c === '-') continue;
+      keyColors[ch] = c;
+    }
+  }
+  for (const rowKeys of layout) {
+    const row = document.createElement('div');
+    row.className = 'kb-row' + (rowKeys.length > 10 ? ' compact' : '');
+    for (const key of rowKeys) {
+      const btn = document.createElement('button');
+      btn.className = 'key' + (key === 'ENTER' || key === 'BACK' ? ' wide' : '');
+      btn.textContent = key === 'ENTER' ? '⏎' : key === 'BACK' ? '⌫' : key;
+      btn.dataset.key = key;
+      if (key !== 'ENTER' && key !== 'BACK' && keyColors[key]) {
+        btn.dataset.color = keyColors[key];
+      }
+      btn.addEventListener('click', () => handleKey(key));
+      row.appendChild(btn);
+    }
+    kb.appendChild(row);
+  }
+  if (layout[0].length > 10) kb.classList.add('lots'); else kb.classList.remove('lots');
+}
+
+// Sync the big green primary button to the current game phase.
+//   playing + incomplete row  -> disabled "ENTER"
+//   playing + full row        -> active green "ENTER" (with subtle pulse)
+//   finished                  -> active green "SHARE RESULT"
+function renderPrimaryBtn() {
+  const btn = document.getElementById('btnPrimary');
+  const lbl = document.getElementById('primaryLabel');
+  if (!btn || !lbl) return;
+  if (state.finished) {
+    btn.classList.remove('disabled', 'ready');
+    lbl.textContent = (t('game.share_result') || 'Share Result').toUpperCase();
+    btn.dataset.mode = 'share';
+  } else {
+    btn.dataset.mode = 'enter';
+    lbl.textContent = (t('common.enter') !== 'common.enter' ? t('common.enter') : 'ENTER').toUpperCase();
+    const ready = state.current.length === WORD_LEN && !state.busy;
+    btn.classList.toggle('disabled', !ready);
+    btn.classList.toggle('ready', ready);
+  }
+}
+
+function renderStreak() {
+  const me = state.me || {};
+  const streak = me.streak || 0;
+  const pill = document.getElementById('streakPill');
+  document.getElementById('streakNum').textContent = streak;
+  pill.style.display = streak > 0 ? '' : 'none';
+  if (streak >= 7) pill.classList.add('hot'); else pill.classList.remove('hot');
+}
+
+// ============ Input ============
+function handleKey(key) {
+  if (state.busy || state.finished) {
+    if (state.finished) openStats(); // tap on keyboard -> show end screen
+    return;
+  }
+  if (key === 'ENTER') return submitGuess();
+  if (key === 'BACK') {
+    if (state.current.length > 0) {
+      state.current = state.current.slice(0, -1);
+      renderGrid();
+      renderPrimaryBtn();
+      haptic('sel');
+    }
+    return;
+  }
+  if (state.current.length >= WORD_LEN) return;
+  // Limit to letters from the active keyboard layout (skip ENTER/BACK)
+  const upper = String(key).toUpperCase();
+  state.current += upper;
+  haptic('tap');
+  renderGrid();
+  renderPrimaryBtn();
+}
+
+async function submitGuess() {
+  if (state.current.length < WORD_LEN) {
+    shakeCurrentRow(); toast(t('game.not_enough'), 'error'); haptic('warn'); return;
+  }
+  state.busy = true; renderPrimaryBtn();
+  const guess = state.current.toLowerCase();
+  const r = await api('/api/guess', { lang: state.lang, dayIdx: state.dayIdx, guess });
+  state.busy = false;
+  if (!r.ok) {
+    if (r.body && r.body.code === 'not_a_word') {
+      shakeCurrentRow(); toast(t('game.not_in_list'), 'error'); haptic('warn'); renderPrimaryBtn(); return;
+    }
+    toast(r.body && (r.body.error || t('err.network')), 'error'); haptic('warn'); renderPrimaryBtn(); return;
+  }
+  const pattern = r.body.pattern;
+  state.guesses.push(state.current);
+  state.patterns.push(pattern);
+  state.current = '';
+  // Flip animation then re-render
+  await animateReveal(state.guesses.length - 1, pattern);
+  if (r.body.state === 'won') {
+    state.finished = true; state.result = 'won'; state.answer = r.body.answer;
+    haptic('win');
+    bounceRow(state.guesses.length - 1);
+    confettiBurst();
+    await refreshMe();
+    setTimeout(openStats, 1200);
+  } else if (r.body.state === 'lost') {
+    state.finished = true; state.result = 'lost'; state.answer = r.body.answer;
+    haptic('lose');
+    msg(t('game.answer_was') + ': ' + (state.answer || '').toUpperCase());
+    await refreshMe();
+    setTimeout(openStats, 1200);
+  } else {
+    msg(t('game.guess_n_of_6', { n: state.guesses.length + 1 }));
+    renderKeyboard();
+  }
+  renderPrimaryBtn();
+}
+
+function shakeCurrentRow() {
+  const rowEl = document.querySelector('.row[data-row="' + state.guesses.length + '"]');
+  if (!rowEl) return;
+  rowEl.classList.add('shake');
+  setTimeout(() => rowEl.classList.remove('shake'), 350);
+}
+
+function animateReveal(rowIdx, pattern) {
+  return new Promise(resolve => {
+    const rowEl = document.querySelector('.row[data-row="' + rowIdx + '"]');
+    if (!rowEl) { renderGrid(); renderKeyboard(); return resolve(); }
+    const tiles = rowEl.querySelectorAll('.tile');
+    tiles.forEach((tile, i) => {
+      setTimeout(() => {
+        tile.classList.add('flipping');
+        // Mid-flip: apply color + letter
+        setTimeout(() => {
+          tile.classList.add('revealed');
+          tile.dataset.color = pattern[i];
+          tile.textContent = state.guesses[rowIdx][i];
+        }, 280);
+      }, i * 280);
+    });
+    setTimeout(() => {
+      renderKeyboard();
+      resolve();
+    }, tiles.length * 280 + 320);
+  });
+}
+
+function bounceRow(rowIdx) {
+  const rowEl = document.querySelector('.row[data-row="' + rowIdx + '"]');
+  if (!rowEl) return;
+  const tiles = rowEl.querySelectorAll('.tile');
+  tiles.forEach((tile, i) => {
+    setTimeout(() => { tile.classList.add('bounce'); }, i * 80);
+    setTimeout(() => { tile.classList.remove('bounce'); }, i * 80 + 700);
+  });
+}
+
+function confettiBurst() {
+  const colors = ['#538d4e','#b59f3b','#ff7a3d','#5ec3ff','#e94e77','#ffdd00','#9b5de5'];
+  for (let i = 0; i < 60; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.background = colors[i % colors.length];
+    piece.style.left = (50 + (Math.random() - 0.5) * 80) + 'vw';
+    piece.style.top = (15 + Math.random() * 10) + 'vh';
+    const dx = (Math.random() - 0.5) * 200;
+    piece.style.transform = `translateX(${dx}px) rotate(${Math.random()*720}deg)`;
+    piece.style.animation = `fall ${1400 + Math.random()*1000}ms ease-out forwards`;
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 2600);
+  }
+}
+
+// ============ Modals ============
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => closeModal(b.dataset.close)));
+document.querySelectorAll('.modal-bg').forEach(bg => {
+  bg.addEventListener('click', (e) => { if (e.target === bg) bg.classList.remove('show'); });
+});
+
+// ============ Stats ============
+function openStats() {
+  const m = state.me || {};
+  document.getElementById('sGames').textContent = m.games_played || 0;
+  const pct = m.games_played ? Math.round(100 * (m.games_won || 0) / m.games_played) : 0;
+  document.getElementById('sWinPct').textContent = pct;
+  document.getElementById('sStreak').textContent = m.streak || 0;
+  document.getElementById('sMaxStreak').textContent = m.max_streak || 0;
+  // Distribution
+  const dist = (m.guess_dist || [0,0,0,0,0,0]);
+  const max = Math.max(1, ...dist);
+  const distEl = document.getElementById('distEl');
+  distEl.innerHTML = '';
+  for (let i = 0; i < 6; i++) {
+    const row = document.createElement('div'); row.className = 'dist-row';
+    const isCurrent = state.finished && state.result === 'won' && state.guesses.length === (i + 1);
+    row.innerHTML = `<div class="dist-num">${i+1}</div>
+      <div class="dist-bar"><div class="dist-fill ${isCurrent ? 'current' : ''}" style="width:${Math.max(8, Math.round(100*dist[i]/max))}%">${dist[i]}</div></div>`;
+    distEl.appendChild(row);
+  }
+  // End-game section
+  const endSec = document.getElementById('endGameSection');
+  if (state.finished) {
+    endSec.style.display = '';
+    document.getElementById('endEmoji').textContent = state.result === 'won' ? '🎉' : '🫥';
+    const word = (state.answer || '').toUpperCase();
+    document.getElementById('endWord').textContent = state.result === 'won' ? t('game.you_won') : (t('game.answer_was') + ' ' + word);
+    document.getElementById('shareGrid').textContent = buildShareGrid(true);
+    updateCountdown();
+    if (state._countdown) clearInterval(state._countdown);
+    state._countdown = setInterval(updateCountdown, 1000);
+  } else {
+    endSec.style.display = 'none';
+  }
+  openModal('statsModal');
+}
+
+function buildShareGrid(includeHeader) {
+  const lines = [];
+  if (includeHeader) {
+    const result = state.result === 'won' ? state.guesses.length : 'X';
+    lines.push(t('share.text', { day: state.dayIdx, result }));
+    lines.push('');
+  }
+  for (const p of state.patterns) {
+    let s = '';
+    for (const ch of p) s += (ch === 'G' ? '🟩' : ch === 'Y' ? '🟨' : '⬛');
+    lines.push(s);
+  }
+  return lines.join('\n');
+}
+
+function updateCountdown() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setUTCHours(24,0,0,0);  // next UTC midnight
+  const ms = next - now;
+  const h = String(Math.floor(ms / 3600000)).padStart(2,'0');
+  const m = String(Math.floor(ms / 60000) % 60).padStart(2,'0');
+  const s = String(Math.floor(ms / 1000) % 60).padStart(2,'0');
+  const el = document.getElementById('nextTime');
+  if (el) el.textContent = `${h}:${m}:${s}`;
+}
+
+// ============ Share ============
+async function shareResult() {
+  const text = buildShareGrid(true);
+  // Prefer Telegram in-chat share for Mini App
+  if (TG && TG.openTelegramLink) {
+    const botUser = ''; // optional: set bot username for direct share link
+    if (TG.shareMessage) {
+      try { TG.shareMessage(text); return; } catch(_) {}
+    }
+    // Telegram WebApp share via Native sheet:
+    if (navigator.share) {
+      try { await navigator.share({ text }); return; } catch(_) {}
+    }
+  }
+  // Fallback: copy to clipboard
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(t('common.copied'));
+  } catch (_) {
+    // Fallback fallback: select-and-copy in a hidden textarea
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    toast(t('common.copied'));
+  }
+}
+
+// ============ Settings ============
+function populateLangSelect() {
+  const sel = document.getElementById('langSelect');
+  sel.innerHTML = '';
+  for (const l of SUPPORTED_LANGS) {
+    const opt = document.createElement('option');
+    opt.value = l.code; opt.textContent = l.native;
+    if (l.code === currentLang) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  sel.addEventListener('change', async () => {
+    const newLang = sel.value;
+    localStorage.setItem('slovo.lang', newLang);
+    currentLang = newLang;
+    state.lang = PUZZLE_LANGS.has(newLang) ? newLang : 'en';
+    localize();
+    document.getElementById('langValue').textContent = (SUPPORTED_LANGS.find(l => l.code === newLang) || {}).native || newLang;
+    // Re-fetch puzzle for new language
+    await api('/api/set-lang', { lang: newLang }).catch(() => {});
+    await loadToday(true);
+  });
+  document.getElementById('langValue').textContent = (SUPPORTED_LANGS.find(l => l.code === currentLang) || {}).native || currentLang;
+}
+
+function populateThemesGrid() {
+  const grid = document.getElementById('themesGrid');
+  grid.innerHTML = '';
+  const me = state.me || {};
+  const owned = me.themes_owned || [];
+  const proActive = (me.pro_until || 0) > Date.now();
+  const active = me.active_theme || localStorage.getItem('slovo.theme') || 'default';
+  for (const th of THEMES) {
+    const isOwned = th.free || owned.includes(th.id) || proActive;
+    const div = document.createElement('div');
+    div.className = 'theme-tile' + (th.id === active ? ' active' : '');
+    div.style.background = th.palette[0];
+    div.style.color = th.palette[3];
+    div.innerHTML = `
+      <div class="name">${t('theme.' + th.id, {}) || th.id}</div>
+      <div class="pal"><span style="background:${th.palette[1]}"></span><span style="background:${th.palette[2]}"></span><span style="background:${th.palette[3]}"></span></div>
+      ${isOwned ? '' : '<div class="lock">🔒</div>'}
+    `;
+    div.addEventListener('click', async () => {
+      if (!isOwned) {
+        openShop();
+        return;
+      }
+      applyTheme(th.id);
+      await api('/api/set-theme', { theme: th.id }).catch(() => {});
+      populateThemesGrid();
+    });
+    grid.appendChild(div);
+  }
+}
+
+function populateNotifSelect() {
+  const sel = document.getElementById('notifHourSelect');
+  sel.innerHTML = '';
+  for (let h = 0; h < 24; h++) {
+    const opt = document.createElement('option');
+    opt.value = String(h); opt.textContent = String(h).padStart(2,'0') + ':00';
+    sel.appendChild(opt);
+  }
+  const me = state.me || {};
+  sel.value = String(me.notif_hour ?? 9);
+  document.getElementById('notifHourValue').textContent = String(me.notif_hour ?? 9).padStart(2,'0') + ':00';
+  sel.addEventListener('change', async () => {
+    const h = parseInt(sel.value, 10);
+    document.getElementById('notifHourValue').textContent = String(h).padStart(2,'0') + ':00';
+    const tz = -new Date().getTimezoneOffset();  // minutes east of UTC
+    await api('/api/set-notif', { hour: h, tzOffsetMin: tz, optIn: true }).catch(() => {});
+  });
+}
+
+function setupNotifToggle() {
+  const tog = document.getElementById('notifToggle');
+  const me = state.me || {};
+  const on = !!me.notif_opted_in;
+  tog.classList.toggle('on', on);
+  document.getElementById('notifHourRow').style.display = on ? '' : 'none';
+  tog.addEventListener('click', async () => {
+    const wasOn = tog.classList.contains('on');
+    const next = !wasOn;
+    if (next && TG && TG.requestWriteAccess) {
+      // Ask permission to message the user.
+      try { TG.requestWriteAccess(() => {}); } catch(_) {}
+    }
+    tog.classList.toggle('on', next);
+    document.getElementById('notifHourRow').style.display = next ? '' : 'none';
+    const h = parseInt(document.getElementById('notifHourSelect').value || '9', 10);
+    const tz = -new Date().getTimezoneOffset();
+    await api('/api/set-notif', { hour: h, tzOffsetMin: tz, optIn: next }).catch(() => {});
+  });
+}
+
+function shareApp() {
+  const url = (TG && TG.initDataUnsafe && TG.initDataUnsafe.user && TG.initDataUnsafe.user.id)
+    ? `https://t.me/share/url?url=${encodeURIComponent(location.href)}&text=${encodeURIComponent('Play Slovo — daily word puzzle')}`
+    : 'https://t.me/share/url?url=' + encodeURIComponent(location.href);
+  if (TG && TG.openTelegramLink) {
+    try { TG.openTelegramLink(url); return; } catch(_) {}
+  }
+  window.open(url, '_blank');
+}
+
+// ============ Shop ============
+async function openShop() {
+  closeModal('settingsModal');
+  await loadSkus();
+  openModal('shopModal');
+}
+
+async function loadSkus() {
+  try {
+    const r = await fetch('/api/skus');
+    const j = await r.json();
+    state.skus = j.skus || [];
+  } catch (e) { state.skus = []; }
+  renderShop();
+}
+
+function renderShop() {
+  const list = document.getElementById('shopList');
+  list.innerHTML = '';
+  const me = state.me || {};
+  const proActive = (me.pro_until || 0) > Date.now();
+  const owned = me.themes_owned || [];
+  for (const sku of state.skus) {
+    const row = document.createElement('div'); row.className = 'sku-row';
+    const grant = sku.grant || {};
+    let alreadyOwned = false;
+    if (grant.archive === true && me.archive_unlocked) alreadyOwned = true;
+    if (Array.isArray(grant.themes) && grant.themes.every(th => owned.includes(th))) alreadyOwned = true;
+    if (typeof grant.proDays === 'number' && proActive) alreadyOwned = true;
+    const title = t('sku.' + sku.id + '.title') !== ('sku.' + sku.id + '.title') ? t('sku.' + sku.id + '.title') : sku.title;
+    const desc  = t('sku.' + sku.id + '.desc')  !== ('sku.' + sku.id + '.desc')  ? t('sku.' + sku.id + '.desc')  : sku.description;
+    row.innerHTML = `
+      <div class="sku-info">
+        <div class="sku-title">${title}</div>
+        <div class="sku-desc">${desc}</div>
+      </div>
+      <button class="sku-buy ${alreadyOwned ? 'owned' : ''}">${alreadyOwned ? t('shop.owned') : '⭐ ' + sku.price}</button>
+    `;
+    const btn = row.querySelector('.sku-buy');
+    if (!alreadyOwned) btn.addEventListener('click', () => buy(sku.id));
+    list.appendChild(row);
+  }
+  if (!state.skus.length) {
+    list.innerHTML = `<div style="text-align:center;color:var(--text-mute);padding:20px;">Shop unavailable in dev mode.</div>`;
+  }
+}
+
+async function buy(skuId) {
+  if (!TG || !TG.openInvoice) {
+    toast('Telegram required for purchases', 'error');
+    return;
+  }
+  const r = await api('/api/create-invoice', { sku: skuId });
+  if (!r.ok) { toast(r.body && r.body.error || t('err.network'), 'error'); return; }
+  const link = r.body.link;
+  TG.openInvoice(link, async (status) => {
+    if (status === 'paid') {
+      toast('⭐ Thanks!');
+      setTimeout(() => pollPurchases(), 500);
+      setTimeout(() => pollPurchases(), 3000);
+    } else if (status === 'failed' || status === 'cancelled') {
+      toast(status, 'error');
+    }
+  });
+}
+
+async function pollPurchases() {
+  const r = await api('/api/poll-purchases', {});
+  if (!r.ok || !r.body || !r.body.purchases || !r.body.purchases.length) return;
+  await refreshMe();
+  populateThemesGrid();
+  renderShop();
+  toast('⭐ Purchase applied');
+}
+
+// ============ Load + boot ============
+async function refreshMe() {
+  const r = await api('/api/me', {});
+  if (r.ok) {
+    state.me = r.body.stats || {};
+    renderStreak();
+  }
+}
+
+async function loadToday(force) {
+  const r = await api('/api/today', { lang: state.lang });
+  if (!r.ok) { toast(r.body && r.body.error || t('err.network'), 'error'); return; }
+  state.dayIdx = r.body.dayIdx;
+  state.today = r.body.today;
+  state.guesses = (r.body.progress.guesses || []).map(g => g.toUpperCase());
+  state.patterns = r.body.progress.patterns || [];
+  state.current = '';
+  state.finished = r.body.progress.state !== 'playing';
+  state.result = state.finished ? r.body.progress.state : null;
+  state.answer = r.body.progress.answer || null;
+  renderGrid();
+  renderKeyboard();
+  renderPrimaryBtn();
+  if (state.finished) {
+    msg(state.result === 'won' ? t('game.you_won') : (t('game.answer_was') + ': ' + (state.answer || '').toUpperCase()));
+  } else if (state.guesses.length === 0) {
+    msg('');
+  } else {
+    msg(t('game.guess_n_of_6', { n: state.guesses.length + 1 }));
+  }
+}
+
+function maybeShowOnboarding() {
+  if (localStorage.getItem('slovo.onboarded')) return;
+  openModal('onbModal');
+}
+document.getElementById('btnOnbStart').addEventListener('click', () => {
+  localStorage.setItem('slovo.onboarded', '1');
+  closeModal('onbModal');
+});
+
+// Big green primary button — context-aware: ENTER while playing, SHARE when finished
+document.getElementById('btnPrimary').addEventListener('click', () => {
+  const mode = document.getElementById('btnPrimary').dataset.mode;
+  if (mode === 'share') return shareResult();
+  if (state.current.length === WORD_LEN && !state.busy && !state.finished) return submitGuess();
+});
+
+// Wire header buttons
+document.getElementById('btnStats').addEventListener('click', openStats);
+document.getElementById('btnShop').addEventListener('click', openShop);
+document.getElementById('btnSettings').addEventListener('click', async () => {
+  await refreshMe();
+  populateThemesGrid();
+  setupNotifToggle();
+  openModal('settingsModal');
+});
+document.getElementById('btnShare').addEventListener('click', shareResult);
+document.getElementById('btnShareApp').addEventListener('click', shareApp);
+document.getElementById('btnHowTo').addEventListener('click', () => { closeModal('settingsModal'); openModal('onbModal'); });
+
+// Physical keyboard input (desktop / Telegram on PC)
+document.addEventListener('keydown', (e) => {
+  if (document.querySelector('.modal-bg.show')) return;
+  if (e.key === 'Enter') { handleKey('ENTER'); e.preventDefault(); }
+  else if (e.key === 'Backspace') { handleKey('BACK'); e.preventDefault(); }
+  else if (e.key.length === 1) {
+    const k = e.key.toUpperCase();
+    // Allow Latin + Cyrillic letter range
+    if (/^[A-ZÀ-Ž]$/.test(k) || /^[А-ЯЁЇІЄҐ]$/u.test(k)) { handleKey(k); }
+  }
+});
+
+// Boot
+(async function boot() {
+  currentLang = detectInitialLang();
+  state.lang = PUZZLE_LANGS.has(currentLang) ? currentLang : 'en';
+  localize();
+  applyTheme(localStorage.getItem('slovo.theme') || 'default');
+  populateLangSelect();
+  populateNotifSelect();
+  renderGrid();
+  renderKeyboard();
+  await refreshMe();
+  await loadToday();
+  maybeShowOnboarding();
+  // If returning to a finished game, show stats after a beat.
+  if (state.finished) setTimeout(openStats, 600);
+  // Background poll for any pending purchases (handles webhook arriving while app was closed).
+  pollPurchases().catch(() => {});
+})();
+</script>
+</body>
+</html>

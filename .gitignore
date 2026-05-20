@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env.local
+*.log
+.DS_Store
+.idea/
+.vscode/
+# Raw word lists — re-fetch via scripts/build-wordlists.js when needed.
+# Cleaned JSON files in data/*.json are the shipping artifacts.
+data/_raw-*.txt
