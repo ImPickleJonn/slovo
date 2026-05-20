@@ -468,6 +468,60 @@
     pointer-events: none; will-change: transform, opacity; z-index: 300;
   }
 
+  /* ============ Bottom tab bar + view container ============ */
+  .views {
+    flex: 1 1 auto; min-height: 0; min-width: 0;
+    width: 100%; max-width: 500px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .view { display: none; flex: 1 1 auto; min-height: 0; flex-direction: column; width: 100%; }
+  .view.active { display: flex; }
+  .view-scroll {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto;
+    padding: 12px 14px 12px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  .view-scroll h2 { margin: 0 0 12px; font-size: 22px; text-align: center; }
+  .view-scroll .section-title {
+    text-transform: uppercase; letter-spacing: 0.5px;
+    font-size: 11px; color: var(--text-dim); font-weight: 700;
+    margin: 18px 0 8px;
+  }
+  .view-scroll .section-title:first-child { margin-top: 4px; }
+  .view-scroll .footer-note {
+    text-align: center; font-size: 11px; color: var(--text-mute);
+    margin-top: 14px; padding-bottom: 10px;
+  }
+
+  .tab-bar {
+    flex: 0 0 auto;
+    display: flex; align-items: stretch;
+    width: 100%; max-width: 500px;
+    margin: 0 auto;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding-bottom: var(--safe-bot);
+  }
+  .tab-btn {
+    flex: 1 1 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 8px 4px 8px;
+    background: transparent; border: none; cursor: pointer;
+    color: var(--text-dim); transition: color 160ms, transform 80ms;
+    gap: 2px;
+  }
+  .tab-btn:active { transform: scale(0.94); }
+  .tab-btn-icon { font-size: 22px; line-height: 1; }
+  .tab-btn-label { font-size: 11px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
+  .tab-btn.active { color: var(--green); }
+  .tab-btn.active .tab-btn-icon { transform: scale(1.1); }
+
+  /* On non-home tabs we hide the primary-bar (ENTER) + keyboard. */
+  body[data-active-tab="home"] .home-only { display: ''; }
+  body:not([data-active-tab="home"]) .home-only { display: none !important; }
+
   /* RTL */
   html[dir="rtl"] .header-btns { flex-direction: row-reverse; }
   html[dir="rtl"] .stats-row { flex-direction: row-reverse; }
@@ -479,12 +533,11 @@
   }
 </style>
 </head>
-<body data-theme="dark">
+<body data-theme="dark" data-active-tab="home">
 <div class="app" id="app">
   <header>
     <div class="header-btns">
       <button class="icon-btn" id="btnStats" title="Stats">📊</button>
-      <button class="icon-btn" id="btnShop" title="Shop">⭐</button>
     </div>
     <div class="brand" id="brand">SLOVO</div>
     <div class="header-btns">
@@ -492,14 +545,62 @@
       <button class="icon-btn" id="btnSettings" title="Settings">⚙️</button>
     </div>
   </header>
-  <main>
-    <div class="grid" id="grid"></div>
-    <div class="msg-strip" id="msgStrip"></div>
-  </main>
-  <div class="primary-bar">
-    <button class="btn-primary disabled" id="btnPrimary"><span id="primaryLabel">ENTER</span></button>
+
+  <div class="views" id="views">
+    <!-- HOME TAB: the puzzle -->
+    <div class="view view-home active" id="viewHome">
+      <main>
+        <div class="grid" id="grid"></div>
+        <div class="msg-strip" id="msgStrip"></div>
+      </main>
+      <div class="primary-bar">
+        <button class="btn-primary disabled" id="btnPrimary"><span id="primaryLabel">ENTER</span></button>
+      </div>
+      <div class="kb" id="kb"></div>
+    </div>
+
+    <!-- SHOP TAB: paid SKUs -->
+    <div class="view view-shop" id="viewShop">
+      <div class="view-scroll">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:0 0 12px;">
+          <h2 style="margin:0;" data-i18n="shop.title">⭐ Shop</h2>
+          <span class="hints-balance" id="shopHintsBalance" style="display:none;">💡 <span id="shopHintsBalanceNum">0</span></span>
+        </div>
+        <div class="section-title" data-i18n="shop.buy_section">⭐ Buy with Telegram Stars</div>
+        <div id="shopList"></div>
+        <div class="footer-note">Paid with Telegram Stars · No ads, ever</div>
+      </div>
+    </div>
+
+    <!-- EARN TAB: missions -->
+    <div class="view view-earn" id="viewEarn">
+      <div class="view-scroll">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:0 0 12px;">
+          <h2 style="margin:0;" data-i18n="earn.title">💰 Earn</h2>
+          <span class="hints-balance" id="earnHintsBalance" style="display:none;">💡 <span id="earnHintsBalanceNum">0</span></span>
+        </div>
+        <div class="section-title" data-i18n="earn.section">Complete tasks · earn free hints</div>
+        <div id="earnList"></div>
+        <div class="footer-note">Hints used in-game when stuck</div>
+      </div>
+    </div>
   </div>
-  <div class="kb" id="kb"></div>
+
+  <!-- BOTTOM TAB BAR -->
+  <nav class="tab-bar" id="tabBar">
+    <button class="tab-btn" data-tab="shop">
+      <div class="tab-btn-icon">🛒</div>
+      <div class="tab-btn-label" data-i18n="tab.shop">Shop</div>
+    </button>
+    <button class="tab-btn active" data-tab="home">
+      <div class="tab-btn-icon">🧠</div>
+      <div class="tab-btn-label" data-i18n="tab.home">Home</div>
+    </button>
+    <button class="tab-btn" data-tab="earn">
+      <div class="tab-btn-icon">💰</div>
+      <div class="tab-btn-label" data-i18n="tab.earn">Earn</div>
+    </button>
+  </nav>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -553,6 +654,10 @@
     </div>
     <div class="themes-grid" id="themesGrid"></div>
     <div class="setting-row">
+      <div class="setting-label"><span class="setting-icon">🔊</span><span data-i18n="settings.sound">Sound effects</span></div>
+      <div class="toggle" id="soundToggle"></div>
+    </div>
+    <div class="setting-row">
       <div class="setting-label"><span class="setting-icon">🔔</span><span data-i18n="settings.notifications">Daily reminder</span></div>
       <div class="toggle" id="notifToggle"></div>
     </div>
@@ -574,23 +679,6 @@
   </div>
 </div>
 
-<!-- Shop modal — combines Earn (free hints from missions) + paid Stars SKUs -->
-<div class="modal-bg" id="shopModal">
-  <div class="modal">
-    <button class="close" data-close="shopModal">×</button>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin:0 0 12px;">
-      <h2 style="margin:0;" data-i18n="shop.title">⭐ Shop</h2>
-      <span class="hints-balance" id="hintsBalance" style="display:none;">💡 <span id="hintsBalanceNum">0</span></span>
-    </div>
-    <div class="shop-section-title" data-i18n="earn.title">💰 Earn free hints</div>
-    <div id="earnList"></div>
-    <div class="shop-section-title" data-i18n="shop.buy_section">⭐ Buy with Telegram Stars</div>
-    <div id="shopList"></div>
-    <div style="text-align:center;font-size:11px;color:var(--text-mute);margin-top:12px;">
-      Paid with Telegram Stars · No ads, ever
-    </div>
-  </div>
-</div>
 
 <!-- Onboarding modal -->
 <div class="modal-bg" id="onbModal">
@@ -624,7 +712,17 @@
 // ============ Telegram WebApp bootstrap ============
 const TG = window.Telegram && window.Telegram.WebApp;
 const HAPTIC = TG && TG.HapticFeedback;
-if (TG) { try { TG.ready(); TG.expand(); TG.disableVerticalSwipes && TG.disableVerticalSwipes(); } catch(_){} }
+if (TG) {
+  try {
+    TG.ready();
+    TG.expand();
+    TG.disableVerticalSwipes && TG.disableVerticalSwipes();
+    // True fullscreen on Telegram (hides the Telegram header bar) —
+    // available on Telegram clients >= 8.0. Safe to call on older clients;
+    // they ignore unknown methods.
+    TG.requestFullscreen && TG.requestFullscreen();
+  } catch(_){}
+}
 
 function haptic(kind) {
   if (!HAPTIC) return;
@@ -636,6 +734,73 @@ function haptic(kind) {
     else if (kind === 'sel')  HAPTIC.selectionChanged();
   } catch(_) {}
 }
+
+// ============ Audio (Web Audio, synthesized — no audio files) ============
+// Subtle, fun, snappy. All sounds are oscillator-based so the app stays
+// single-file with zero asset weight. iOS/TG WebView starts AudioContext
+// suspended; we resume on the first user gesture.
+const audio = { ctx: null, master: null, enabled: true, initialized: false };
+try { audio.enabled = localStorage.getItem('slovo.sound') !== '0'; } catch (_) {}
+function initAudio() {
+  if (audio.initialized) {
+    if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume().catch(() => {});
+    return;
+  }
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    audio.ctx = new AC();
+    audio.master = audio.ctx.createGain();
+    audio.master.gain.value = 0.28;
+    audio.master.connect(audio.ctx.destination);
+    audio.initialized = true;
+    if (audio.ctx.state === 'suspended') audio.ctx.resume().catch(() => {});
+  } catch (e) { audio.enabled = false; }
+}
+function setSoundEnabled(on) {
+  audio.enabled = !!on;
+  try { localStorage.setItem('slovo.sound', on ? '1' : '0'); } catch (_) {}
+  if (on) initAudio();
+}
+function playTone({ freq = 440, type = 'sine', dur = 0.12, vol = 0.5, attack = 0.005, slideTo = null, delay = 0 }) {
+  if (!audio.enabled || !audio.ctx) return;
+  const ctx = audio.ctx;
+  const t0 = ctx.currentTime + delay;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  if (slideTo !== null) osc.frequency.exponentialRampToValueAtTime(Math.max(1, slideTo), t0 + dur);
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(vol, t0 + attack);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(gain).connect(audio.master);
+  osc.start(t0); osc.stop(t0 + dur + 0.02);
+}
+// Sound library — keep each sndX a one-line composition so tweaks are obvious.
+function sndType()   { playTone({ freq: 660, type: 'triangle', dur: 0.04, vol: 0.22 }); }
+function sndBack()   { playTone({ freq: 380, type: 'sine',     dur: 0.05, vol: 0.18, slideTo: 260 }); }
+function sndReveal(color, delay) {
+  // Pitch hints at the result: green high+bell, yellow mid, gray low+muted
+  if (color === 'G')      { playTone({ freq: 880,  type: 'sine',     dur: 0.18, vol: 0.20, slideTo: 1320, delay }); }
+  else if (color === 'Y') { playTone({ freq: 587,  type: 'triangle', dur: 0.14, vol: 0.16, slideTo: 740,  delay }); }
+  else                    { playTone({ freq: 220,  type: 'sine',     dur: 0.10, vol: 0.10, slideTo: 130,  delay }); }
+}
+function sndInvalid() {
+  playTone({ freq: 180, type: 'sawtooth', dur: 0.18, vol: 0.18, slideTo: 100 });
+  playTone({ freq: 90,  type: 'sine',     dur: 0.22, vol: 0.12, slideTo: 60, delay: 0.02 });
+}
+function sndWin() {
+  // C-E-G-C triangle arpeggio + sparkle overtones
+  [523, 659, 784, 1047].forEach((f, i) => playTone({ freq: f, type: 'triangle', dur: 0.32, vol: 0.30, delay: i * 0.09 }));
+  playTone({ freq: 2093, type: 'sine', dur: 0.5, vol: 0.10, delay: 0.32 });
+}
+function sndLose() {
+  // Descending sigh — gentle, not punishing
+  [440, 392, 349, 294].forEach((f, i) => playTone({ freq: f, type: 'triangle', dur: 0.30, vol: 0.22, delay: i * 0.10 }));
+}
+function sndTab()    { playTone({ freq: 740, type: 'sine', dur: 0.05, vol: 0.14, slideTo: 880 }); }
+function sndStreak() { [659, 880, 1175].forEach((f, i) => playTone({ freq: f, type: 'triangle', dur: 0.18, vol: 0.22, delay: i * 0.06 })); }
 
 // ============ Supported languages ============
 const SUPPORTED_LANGS = [
@@ -728,14 +893,15 @@ const I18N = {
     'app.title':'Slovo',
     'common.close':'Close','common.cancel':'Cancel','common.continue':'Continue','common.share':'Share','common.copied':'Copied!','common.copy':'Copy',
     'common.loading':'Loading…','common.ok':'OK','common.enter':'Enter',
-    'earn.title':'💰 Earn free hints','earn.open':'Open','earn.play':'Play','earn.check':'Check','earn.done':'Done','earn.claimed':'+{n} hints','earn.not_yet':'Not yet — keep playing!','earn.no_key':'Verification offline. Try later.',
+    'earn.title':'💰 Earn','earn.section':'Complete tasks · earn free hints','earn.open':'Open','earn.play':'Play','earn.check':'Check','earn.done':'Done','earn.claimed':'+{n} hints','earn.not_yet':'Not yet — keep playing!','earn.no_key':'Verification offline. Try later.',
     'shop.buy_section':'⭐ Buy with Telegram Stars',
+    'tab.shop':'Shop','tab.home':'Home','tab.earn':'Earn',
     'game.guess_n_of_6':'Guess {n} of 6','game.not_in_list':'Not in word list','game.not_enough':'Not enough letters',
     'game.you_won':'Brilliant!','game.you_lost':'Better luck tomorrow','game.answer_was':'The word was','game.share_result':'Share Result',
     'game.next_in':'Next puzzle in','game.hint_used':'Letter revealed','game.no_hints':'No hints left',
     'home.play_today':"Play Today's Word",
     'stats.title':'Statistics','stats.played':'Played','stats.win_rate':'Win %','stats.current_streak':'Streak','stats.max_streak':'Max Streak','stats.guess_distribution':'Guess Distribution',
-    'settings.title':'Settings','settings.language':'Language','settings.theme':'Theme','settings.notifications':'Daily reminder','settings.notif_hour':'Notification time','settings.share_app':'Share Slovo','settings.howto':'How to play',
+    'settings.title':'Settings','settings.language':'Language','settings.theme':'Theme','settings.sound':'Sound effects','settings.notifications':'Daily reminder','settings.notif_hour':'Notification time','settings.share_app':'Share Slovo','settings.howto':'How to play',
     'shop.title':'⭐ Shop','shop.purchase':'Buy','shop.owned':'Owned','shop.pro_active':'Pro active',
     'sku.hint_pack.title':'Hint Pack · 5 Hints','sku.hint_pack.desc':'Reveal a random letter when stuck.',
     'sku.streak_shield.title':'Streak Shield · 7 days','sku.streak_shield.desc':'Miss a day? Your streak survives.',
@@ -751,14 +917,15 @@ const I18N = {
   },
   ru: {
     'common.close':'Закрыть','common.cancel':'Отмена','common.continue':'Продолжить','common.share':'Поделиться','common.copied':'Скопировано!','common.copy':'Копировать','common.loading':'Загрузка…','common.ok':'OK','common.enter':'Ввести',
-    'earn.title':'💰 Бесплатные подсказки','earn.open':'Открыть','earn.play':'Играть','earn.check':'Проверить','earn.done':'Готово','earn.claimed':'+{n} подсказок','earn.not_yet':'Пока нет — попробуйте позже','earn.no_key':'Проверка недоступна.',
+    'earn.title':'💰 Заработать','earn.section':'Выполняйте задания — получайте бесплатные подсказки','earn.open':'Открыть','earn.play':'Играть','earn.check':'Проверить','earn.done':'Готово','earn.claimed':'+{n} подсказок','earn.not_yet':'Пока нет — попробуйте позже','earn.no_key':'Проверка недоступна.',
     'shop.buy_section':'⭐ Купить за Звёзды',
+    'tab.shop':'Магазин','tab.home':'Главная','tab.earn':'Награды',
     'game.guess_n_of_6':'Попытка {n} из 6','game.not_in_list':'Нет в словаре','game.not_enough':'Недостаточно букв',
     'game.you_won':'Великолепно!','game.you_lost':'Завтра повезёт','game.answer_was':'Слово было','game.share_result':'Поделиться',
     'game.next_in':'Следующее через','game.hint_used':'Буква открыта','game.no_hints':'Подсказок нет',
     'home.play_today':'Сегодняшнее слово',
     'stats.title':'Статистика','stats.played':'Сыграно','stats.win_rate':'% побед','stats.current_streak':'Серия','stats.max_streak':'Максимум','stats.guess_distribution':'Распределение попыток',
-    'settings.title':'Настройки','settings.language':'Язык','settings.theme':'Тема','settings.notifications':'Ежедневное напоминание','settings.notif_hour':'Время напоминания','settings.share_app':'Поделиться Slovo','settings.howto':'Как играть',
+    'settings.title':'Настройки','settings.language':'Язык','settings.theme':'Тема','settings.sound':'Звук','settings.notifications':'Ежедневное напоминание','settings.notif_hour':'Время напоминания','settings.share_app':'Поделиться Slovo','settings.howto':'Как играть',
     'shop.title':'⭐ Магазин','shop.purchase':'Купить','shop.owned':'Куплено','shop.pro_active':'Pro активен',
     'sku.hint_pack.title':'Подсказки · 5 шт','sku.hint_pack.desc':'Открой случайную букву.',
     'sku.streak_shield.title':'Щит серии · 7 дней','sku.streak_shield.desc':'Пропустил день? Серия сохранится.',
@@ -1280,6 +1447,7 @@ function handleKey(key) {
       renderGrid();
       renderPrimaryBtn();
       haptic('sel');
+      sndBack();
     }
     return;
   }
@@ -1288,6 +1456,7 @@ function handleKey(key) {
   const upper = String(key).toUpperCase();
   state.current += upper;
   haptic('tap');
+  sndType();
   renderGrid();
   renderPrimaryBtn();
 }
@@ -1307,9 +1476,9 @@ async function submitGuess() {
   state.busy = false;
   if (!r.ok) {
     if (r.body && r.body.code === 'not_a_word') {
-      shakeCurrentRow(); toast(t('game.not_in_list'), 'error'); haptic('warn'); renderPrimaryBtn(); return;
+      shakeCurrentRow(); toast(t('game.not_in_list'), 'error'); haptic('warn'); sndInvalid(); renderPrimaryBtn(); return;
     }
-    toast(r.body && (r.body.error || t('err.network')), 'error'); haptic('warn'); renderPrimaryBtn(); return;
+    toast(r.body && (r.body.error || t('err.network')), 'error'); haptic('warn'); sndInvalid(); renderPrimaryBtn(); return;
   }
   const pattern = r.body.pattern;
   state.guesses.push(state.current);
@@ -1320,6 +1489,7 @@ async function submitGuess() {
   if (r.body.state === 'won') {
     state.finished = true; state.result = 'won'; state.answer = r.body.answer;
     haptic('win');
+    sndWin();
     bounceRow(state.guesses.length - 1);
     confettiBurst();
     const guessesUsed = state.guesses.length;
@@ -1329,12 +1499,13 @@ async function submitGuess() {
     const newStreak = (state.me && state.me.streak) || 0;
     // Streak milestones fire ONCE when crossing the threshold.
     for (const ms of [3, 7, 14, 30, 100, 365]) {
-      if (newStreak >= ms && prevStreak < ms) track('streak_milestone', { streak: newStreak, milestone: ms });
+      if (newStreak >= ms && prevStreak < ms) { track('streak_milestone', { streak: newStreak, milestone: ms }); setTimeout(sndStreak, 800); }
     }
     setTimeout(openStats, 1200);
   } else if (r.body.state === 'lost') {
     state.finished = true; state.result = 'lost'; state.answer = r.body.answer;
     haptic('lose');
+    sndLose();
     msg(t('game.answer_was') + ': ' + (state.answer || '').toUpperCase());
     track('game_lose', { day_idx: state.dayIdx, answer: state.answer });
     await refreshMe();
@@ -1361,6 +1532,7 @@ function animateReveal(rowIdx, pattern) {
     tiles.forEach((tile, i) => {
       setTimeout(() => {
         tile.classList.add('flipping');
+        sndReveal(pattern[i], 0);
         // Mid-flip: apply color + letter
         setTimeout(() => {
           tile.classList.add('revealed');
@@ -1546,7 +1718,8 @@ function populateThemesGrid() {
     `;
     div.addEventListener('click', async () => {
       if (!isOwned) {
-        openShop();
+        closeModal('settingsModal');
+        switchTab('shop');
         return;
       }
       applyTheme(th.id);
@@ -1574,6 +1747,19 @@ function populateNotifSelect() {
     const tz = -new Date().getTimezoneOffset();  // minutes east of UTC
     await api('/api/set-notif', { hour: h, tzOffsetMin: tz, optIn: true }).catch(() => {});
   });
+}
+
+function setupSoundToggle() {
+  const tog = document.getElementById('soundToggle');
+  if (!tog) return;
+  tog.classList.toggle('on', !!audio.enabled);
+  // Use a fresh handler — avoid stacking duplicates if Settings reopens.
+  tog.onclick = () => {
+    const next = !tog.classList.contains('on');
+    tog.classList.toggle('on', next);
+    setSoundEnabled(next);
+    if (next) sndTab();  // little confirmation chirp
+  };
 }
 
 function setupNotifToggle() {
@@ -1607,24 +1793,43 @@ function shareApp() {
   window.open(url, '_blank');
 }
 
-// ============ Shop + Earn ============
-async function openShop() {
-  closeModal('settingsModal');
-  await Promise.all([loadSkus(), loadMissions(), refreshMe()]);
-  renderHintsBalance();
-  renderEarn();
-  renderShop();
-  openModal('shopModal');
-  track('shop_open');
+// ============ Tab switching ============
+async function switchTab(tab) {
+  const body = document.body;
+  const prev = body.dataset.activeTab || 'home';
+  if (prev === tab) return;
+  body.dataset.activeTab = tab;
+  try { localStorage.setItem('slovo.activeTab', tab); } catch (_) {}
+  // View visibility
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const target = document.getElementById('view' + tab.charAt(0).toUpperCase() + tab.slice(1));
+  if (target) target.classList.add('active');
+  // Tab-bar highlight
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  sndTab(); haptic('sel');
+  // Lazy-load tab contents
+  if (tab === 'shop') {
+    await Promise.all([loadSkus(), refreshMe()]);
+    renderHintsBalance();
+    renderShop();
+    track('shop_open');
+  } else if (tab === 'earn') {
+    await Promise.all([loadMissions(), refreshMe()]);
+    renderHintsBalance();
+    renderEarn();
+    track('earn_open');
+  }
 }
 
+// ============ Shop + Earn ============
 function renderHintsBalance() {
   const me = state.me || {};
-  const el = document.getElementById('hintsBalance');
-  const n = document.getElementById('hintsBalanceNum');
-  if (!el || !n) return;
-  n.textContent = me.hints_balance | 0;
-  el.style.display = '';
+  const n = me.hints_balance | 0;
+  for (const [pillId, numId] of [['shopHintsBalance','shopHintsBalanceNum'], ['earnHintsBalance','earnHintsBalanceNum']]) {
+    const pill = document.getElementById(pillId);
+    const num  = document.getElementById(numId);
+    if (pill && num) { num.textContent = n; pill.style.display = ''; }
+  }
 }
 
 async function loadMissions() {
@@ -1778,6 +1983,7 @@ async function buy(skuId) {
     toast('Telegram required for purchases', 'error');
     return;
   }
+  haptic('tap'); sndTab();
   track('iap_open_invoice', { sku: skuId });
   const r = await api('/api/create-invoice', { sku: skuId });
   if (!r.ok) { toast(r.body && r.body.error || t('err.network'), 'error'); return; }
@@ -1802,7 +2008,9 @@ async function pollPurchases() {
   await refreshMe();
   populateThemesGrid();
   renderShop();
+  renderHintsBalance();
   toast('⭐ Purchase applied');
+  sndStreak();
 }
 
 // ============ Load + boot ============
@@ -1853,18 +2061,33 @@ document.getElementById('btnPrimary').addEventListener('click', () => {
   if (state.current.length === WORD_LEN && !state.busy && !state.finished) return submitGuess();
 });
 
+// Bottom tab bar
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
 // Wire header buttons
 document.getElementById('btnStats').addEventListener('click', openStats);
-document.getElementById('btnShop').addEventListener('click', openShop);
 document.getElementById('btnSettings').addEventListener('click', async () => {
   await refreshMe();
   populateThemesGrid();
+  setupSoundToggle();
   setupNotifToggle();
   openModal('settingsModal');
 });
 document.getElementById('btnShare').addEventListener('click', shareResult);
 document.getElementById('btnShareApp').addEventListener('click', shareApp);
 document.getElementById('btnHowTo').addEventListener('click', () => { closeModal('settingsModal'); openModal('onbModal'); });
+
+// Bootstrap AudioContext on the FIRST user gesture (iOS / TG WebView
+// requires this). Listener is one-shot — removes itself after first fire.
+function audioBootstrap() {
+  initAudio();
+  ['click','touchstart','keydown'].forEach(ev =>
+    document.removeEventListener(ev, audioBootstrap, true));
+}
+['click','touchstart','keydown'].forEach(ev =>
+  document.addEventListener(ev, audioBootstrap, true));
 
 // Physical keyboard input (desktop / Telegram on PC)
 document.addEventListener('keydown', (e) => {
@@ -1898,8 +2121,15 @@ document.addEventListener('keydown', (e) => {
   await refreshMe();
   await loadToday();
   maybeShowOnboarding();
-  // If returning to a finished game, show stats after a beat.
-  if (state.finished) setTimeout(openStats, 600);
+  // Restore last active tab (default: home)
+  const lastTab = (() => { try { return localStorage.getItem('slovo.activeTab') || 'home'; } catch (_) { return 'home'; } })();
+  if (lastTab && lastTab !== 'home') {
+    // switchTab needs a tab to differ from current — temporarily mark home as inactive
+    document.body.dataset.activeTab = 'home';
+    switchTab(lastTab);
+  }
+  // If returning to a finished game, show stats after a beat (only if on Home).
+  if (state.finished && (document.body.dataset.activeTab || 'home') === 'home') setTimeout(openStats, 600);
   // Background poll for any pending purchases (handles webhook arriving while app was closed).
   pollPurchases().catch(() => {});
 })();
