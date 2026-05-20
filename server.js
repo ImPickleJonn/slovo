@@ -459,11 +459,19 @@ function rememberUser(uid, patch) {
 
 let lastWebhookStatus = { ok: false, at: 0, description: '' };
 function getPublicUrl() {
-  // Prefer PUBLIC_DOMAIN (Render's auto-injected service hostname, OR a
-  // manual override on any host). Falls back to PUBLIC_URL for users who
-  // set the full URL explicitly, then to RAILWAY_PUBLIC_DOMAIN as a last
-  // resort for warm-backup deploys.
-  if (process.env.PUBLIC_DOMAIN) return `https://${process.env.PUBLIC_DOMAIN}`;
+  // Resolution order:
+  //   1. RENDER_EXTERNAL_HOSTNAME — auto-injected by Render with the FULL
+  //      FQDN (e.g. "slovo-3ra4.onrender.com"). Most reliable on Render.
+  //   2. PUBLIC_DOMAIN — manual or render.yaml fromService. Defensively
+  //      append .onrender.com if it doesn't contain a dot (workaround for
+  //      Render's fromService returning the bare slug instead of the FQDN).
+  //   3. PUBLIC_URL — full URL with protocol, for users setting it explicitly.
+  //   4. RAILWAY_PUBLIC_DOMAIN — last-resort for warm-backup deploys.
+  if (process.env.RENDER_EXTERNAL_HOSTNAME) return `https://${process.env.RENDER_EXTERNAL_HOSTNAME}`;
+  if (process.env.PUBLIC_DOMAIN) {
+    const d = process.env.PUBLIC_DOMAIN;
+    return `https://${d.includes('.') ? d : d + '.onrender.com'}`;
+  }
   if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL.replace(/\/+$/, '');
   if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
   return null;
