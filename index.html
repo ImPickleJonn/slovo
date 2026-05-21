@@ -3051,5 +3051,27 @@ document.addEventListener('keydown', (e) => {
   pollPurchases().catch(() => {});
 })();
 </script>
+<!-- TG Data HQ engagement beacon — fires once per user/game per minute -->
+<script>
+(function(){
+  try {
+    var GAME_ID = 'slovo';
+    var BOT_URL = 'https://tg-data-hq.onrender.com';
+    var tg = window.Telegram && window.Telegram.WebApp;
+    var u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+    if (!u || !u.id) return;
+    fetch(BOT_URL + '/api/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        game: GAME_ID,
+        userId: String(u.id),
+        username: u.username || ((u.first_name || '') + (u.last_name ? '_' + u.last_name : '')),
+        event: 'open',
+      }),
+    }).catch(function(){});
+  } catch (_e) {}
+})();
+</script>
 </body>
 </html>
