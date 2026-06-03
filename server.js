@@ -43,6 +43,27 @@ function notifyPurchase(info) {
   } catch (_e) {}
 }
 
+// Server-side app_init event for TG Data HQ retention + engagement. Called
+// from /api/me (the boot endpoint — request is already initData-validated,
+// so userId is Telegram-verified). TG Data HQ dedups to ~1/hour per
+// (userId|game|event).
+function reportAppInit(info) {
+  if (!NOTIF_BOT_URL || !NOTIF_SECRET) return;
+  try {
+    fetch(NOTIF_BOT_URL.replace(/\/+$/, '') + '/api/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notif-key': NOTIF_SECRET },
+      body: JSON.stringify({
+        game: NOTIF_GAME_ID,
+        event: 'app_init',
+        userId: info.userId,
+        username: info.username,
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+  } catch (_e) {}
+}
+
 // Salt for the daily-puzzle shuffle. If unset, falls back to a constant — fine
 // for dev, but set PUZZLE_SALT in production so the daily word can't be derived
 // from a leaked source-only view of the answer list.
@@ -900,6 +921,7 @@ async function updateUserStats(uid, progress, dayIdx, lang, usedHintThisGame) {
 app.post('/api/me', async (req, res) => {
   const user = resolveUser(req);
   if (!user) return res.status(401).json({ error: 'auth required' });
+  reportAppInit({ userId: user.id, username: user.username });
   let stats = {
     streak: 0, max_streak: 0, games_played: 0, games_won: 0,
     guess_dist: [0,0,0,0,0,0], hints_balance: 0, shield_until: 0,
